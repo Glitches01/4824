@@ -140,51 +140,6 @@ typedef enum logic [3:0] {
     STORE_PAGE_FAULT    = 4'hf
 } EXCEPTION_CODE;
 
-////////////////////////////////////////
-// ---- Datapath Control Signals ---- //
-////////////////////////////////////////
-
-// ALU opA input mux selects
-typedef enum logic [1:0] {
-    OPA_IS_RS1  = 2'h0,
-    OPA_IS_NPC  = 2'h1,
-    OPA_IS_PC   = 2'h2,
-    OPA_IS_ZERO = 2'h3
-} ALU_OPA_SELECT;
-
-// ALU opB input mux selects
-typedef enum logic [3:0] {
-    OPB_IS_RS2    = 4'h0,
-    OPB_IS_I_IMM  = 4'h1,
-    OPB_IS_S_IMM  = 4'h2,
-    OPB_IS_B_IMM  = 4'h3,
-    OPB_IS_U_IMM  = 4'h4,
-    OPB_IS_J_IMM  = 4'h5
-} ALU_OPB_SELECT;
-
-// ALU function code input
-// probably want to leave these alone
-typedef enum logic [4:0] {
-    ALU_ADD     = 5'h00,
-    ALU_SUB     = 5'h01,
-    ALU_SLT     = 5'h02,
-    ALU_SLTU    = 5'h03,
-    ALU_AND     = 5'h04,
-    ALU_OR      = 5'h05,
-    ALU_XOR     = 5'h06,
-    ALU_SLL     = 5'h07,
-    ALU_SRL     = 5'h08,
-    ALU_SRA     = 5'h09,
-    ALU_MUL     = 5'h0a,
-    ALU_MULH    = 5'h0b,
-    ALU_MULHSU  = 5'h0c,
-    ALU_MULHU   = 5'h0d,
-    ALU_DIV     = 5'h0e,
-    ALU_DIVU    = 5'h0f,
-    ALU_REM     = 5'h10,
-    ALU_REMU    = 5'h11
-} ALU_FUNC;
-
 ///////////////////////////////////
 // ---- Instruction Typedef ---- //
 ///////////////////////////////////
@@ -264,6 +219,50 @@ typedef union packed {
 
 } INST; // instruction typedef, this should cover all types of instructions
 
+////////////////////////////////////////
+// ---- Datapath Control Signals ---- //
+////////////////////////////////////////
+
+// ALU opA input mux selects
+typedef enum logic [1:0] {
+    OPA_IS_RS1  = 2'h0,
+    OPA_IS_NPC  = 2'h1,
+    OPA_IS_PC   = 2'h2,
+    OPA_IS_ZERO = 2'h3
+} ALU_OPA_SELECT;
+
+// ALU opB input mux selects
+typedef enum logic [3:0] {
+    OPB_IS_RS2    = 4'h0,
+    OPB_IS_I_IMM  = 4'h1,
+    OPB_IS_S_IMM  = 4'h2,
+    OPB_IS_B_IMM  = 4'h3,
+    OPB_IS_U_IMM  = 4'h4,
+    OPB_IS_J_IMM  = 4'h5
+} ALU_OPB_SELECT;
+
+// ALU function code input
+// probably want to leave these alone
+typedef enum logic [4:0] {
+    ALU_ADD     = 5'h00,
+    ALU_SUB     = 5'h01,
+    ALU_SLT     = 5'h02,
+    ALU_SLTU    = 5'h03,
+    ALU_AND     = 5'h04,
+    ALU_OR      = 5'h05,
+    ALU_XOR     = 5'h06,
+    ALU_SLL     = 5'h07,
+    ALU_SRL     = 5'h08,
+    ALU_SRA     = 5'h09,
+    ALU_MUL     = 5'h0a, // Mult FU
+    ALU_MULH    = 5'h0b, // Mult FU
+    ALU_MULHSU  = 5'h0c, // Mult FU
+    ALU_MULHU   = 5'h0d, // Mult FU
+    ALU_DIV     = 5'h0e, // unused
+    ALU_DIVU    = 5'h0f, // unused
+    ALU_REM     = 5'h10, // unused
+    ALU_REMU    = 5'h11  // unused
+} ALU_FUNC;
 
 ////////////////////////////////
 // ---- Datapath Packets ---- //
