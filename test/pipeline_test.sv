@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////
 //                                                                     //
-//   Modulename :  testbench.sv                                        //
+//   Modulename :  pipeline_test.sv                                    //
 //                                                                     //
 //  Description :  Testbench module for the verisimple pipeline;       //
 //                                                                     //
@@ -8,18 +8,25 @@
 
 `include "verilog/sys_defs.svh"
 
-// these link to the pipe_print.c file in this directory, and are used below to print
+// P4 TODO: Add your own debugging framework. Basic printing of data structures
+//          is an absolute necessity for the project. You can use C functions
+//          like in test/pipeline_print.c or just do everything in verilog.
+//          Be careful about running out of space on CAEN printing lots of state
+//          for longer programs (alexnet, outer_product, etc.)
+
+
+// these link to the pipeline_print.c file in this directory, and are used below to print
 // detailed output to the pipeline_output_file, initialized by open_pipeline_output_file()
-import "DPI-C" function void open_pipeline_output_file(string file_name);
-import "DPI-C" function void print_header(string str);
-import "DPI-C" function void print_cycles();
-import "DPI-C" function void print_stage(string div, int inst, int npc, int valid_inst);
-import "DPI-C" function void print_reg(int wb_reg_wr_data_out_hi, int wb_reg_wr_data_out_lo,
-                                       int wb_reg_wr_idx_out, int wb_reg_wr_en_out);
-import "DPI-C" function void print_membus(int proc2mem_command, int mem2proc_response,
-                                          int proc2mem_addr_hi, int proc2mem_addr_lo,
-                                          int proc2mem_data_hi, int proc2mem_data_lo);
-import "DPI-C" function void print_close();
+// import "DPI-C" function void open_pipeline_output_file(string file_name);
+// import "DPI-C" function void print_header(string str);
+// import "DPI-C" function void print_cycles();
+// import "DPI-C" function void print_stage(string div, int inst, int npc, int valid_inst);
+// import "DPI-C" function void print_reg(int wb_reg_wr_data_out_hi, int wb_reg_wr_data_out_lo,
+//                                        int wb_reg_wr_idx_out, int wb_reg_wr_en_out);
+// import "DPI-C" function void print_membus(int proc2mem_command, int mem2proc_response,
+//                                           int proc2mem_addr_hi, int proc2mem_addr_lo,
+//                                           int proc2mem_data_hi, int proc2mem_data_lo);
+// import "DPI-C" function void print_close();
 
 
 module testbench;
@@ -29,7 +36,7 @@ module testbench;
     // use +WRITEBACK=<my_program>.wb and +PIPELINE=<my_program>.ppln for those outputs as well
     string program_memory_file;
     string writeback_output_file;
-    string pipeline_output_file;
+    // string pipeline_output_file;
 
     // variables used in the testbench
     logic        clock;
@@ -37,7 +44,7 @@ module testbench;
     logic [31:0] clock_count;
     logic [31:0] instr_count;
     int          wb_fileno;
-    logic [63:0] debug_counter; // counter used for when pipeline infinite loops, forces termination
+    logic [63:0] debug_counter; // counter used for infinite loops, forces termination
 
     logic [1:0]       proc2mem_command;
     logic [`XLEN-1:0] proc2mem_addr;
@@ -56,21 +63,21 @@ module testbench;
     logic             pipeline_commit_wr_en;
     logic [`XLEN-1:0] pipeline_commit_NPC;
 
-    logic [`XLEN-1:0] if_NPC_dbg;
-    logic [31:0]      if_inst_dbg;
-    logic             if_valid_dbg;
-    logic [`XLEN-1:0] if_id_NPC_dbg;
-    logic [31:0]      if_id_inst_dbg;
-    logic             if_id_valid_dbg;
-    logic [`XLEN-1:0] id_ex_NPC_dbg;
-    logic [31:0]      id_ex_inst_dbg;
-    logic             id_ex_valid_dbg;
-    logic [`XLEN-1:0] ex_mem_NPC_dbg;
-    logic [31:0]      ex_mem_inst_dbg;
-    logic             ex_mem_valid_dbg;
-    logic [`XLEN-1:0] mem_wb_NPC_dbg;
-    logic [31:0]      mem_wb_inst_dbg;
-    logic             mem_wb_valid_dbg;
+    // logic [`XLEN-1:0] if_NPC_dbg;
+    // logic [31:0]      if_inst_dbg;
+    // logic             if_valid_dbg;
+    // logic [`XLEN-1:0] if_id_NPC_dbg;
+    // logic [31:0]      if_id_inst_dbg;
+    // logic             if_id_valid_dbg;
+    // logic [`XLEN-1:0] id_ex_NPC_dbg;
+    // logic [31:0]      id_ex_inst_dbg;
+    // logic             id_ex_valid_dbg;
+    // logic [`XLEN-1:0] ex_mem_NPC_dbg;
+    // logic [31:0]      ex_mem_inst_dbg;
+    // logic             ex_mem_valid_dbg;
+    // logic [`XLEN-1:0] mem_wb_NPC_dbg;
+    // logic [31:0]      mem_wb_inst_dbg;
+    // logic             mem_wb_valid_dbg;
 
 
     // Instantiate the Pipeline
@@ -95,21 +102,21 @@ module testbench;
         .pipeline_commit_wr_en    (pipeline_commit_wr_en),
         .pipeline_commit_NPC      (pipeline_commit_NPC),
 
-        .if_NPC_dbg       (if_NPC_dbg),
-        .if_inst_dbg      (if_inst_dbg),
-        .if_valid_dbg     (if_valid_dbg),
-        .if_id_NPC_dbg    (if_id_NPC_dbg),
-        .if_id_inst_dbg   (if_id_inst_dbg),
-        .if_id_valid_dbg  (if_id_valid_dbg),
-        .id_ex_NPC_dbg    (id_ex_NPC_dbg),
-        .id_ex_inst_dbg   (id_ex_inst_dbg),
-        .id_ex_valid_dbg  (id_ex_valid_dbg),
-        .ex_mem_NPC_dbg   (ex_mem_NPC_dbg),
-        .ex_mem_inst_dbg  (ex_mem_inst_dbg),
-        .ex_mem_valid_dbg (ex_mem_valid_dbg),
-        .mem_wb_NPC_dbg   (mem_wb_NPC_dbg),
-        .mem_wb_inst_dbg  (mem_wb_inst_dbg),
-        .mem_wb_valid_dbg (mem_wb_valid_dbg)
+        // .if_NPC_dbg       (if_NPC_dbg),
+        // .if_inst_dbg      (if_inst_dbg),
+        // .if_valid_dbg     (if_valid_dbg),
+        // .if_id_NPC_dbg    (if_id_NPC_dbg),
+        // .if_id_inst_dbg   (if_id_inst_dbg),
+        // .if_id_valid_dbg  (if_id_valid_dbg),
+        // .id_ex_NPC_dbg    (id_ex_NPC_dbg),
+        // .id_ex_inst_dbg   (id_ex_inst_dbg),
+        // .id_ex_valid_dbg  (id_ex_valid_dbg),
+        // .ex_mem_NPC_dbg   (ex_mem_NPC_dbg),
+        // .ex_mem_inst_dbg  (ex_mem_inst_dbg),
+        // .ex_mem_valid_dbg (ex_mem_valid_dbg),
+        // .mem_wb_NPC_dbg   (mem_wb_NPC_dbg),
+        // .mem_wb_inst_dbg  (mem_wb_inst_dbg),
+        // .mem_wb_valid_dbg (mem_wb_valid_dbg)
     );
 
 
@@ -176,6 +183,10 @@ module testbench;
     initial begin
         //$dumpvars;
 
+        // P4 NOTE: You must keep memory loading here the same for the autograder
+        //          Other things can be tampered with somewhat
+        //          Definitely feel free to add new output files
+
         // set paramterized strings, see comment at start of module
         if ($value$plusargs("MEMORY=%s", program_memory_file)) begin
             $display("Loading memory file: %s", program_memory_file);
@@ -189,12 +200,12 @@ module testbench;
             $display("Using default writeback output file: writeback.out");
             writeback_output_file = "writeback.out";
         end
-        if ($value$plusargs("PIPELINE=%s", pipeline_output_file)) begin
-            $display("Using pipeline output file: %s", pipeline_output_file);
-        end else begin
-            $display("Using default pipeline output file: pipeline.out");
-            pipeline_output_file = "pipeline.out";
-        end
+        // if ($value$plusargs("PIPELINE=%s", pipeline_output_file)) begin
+        //     $display("Using pipeline output file: %s", pipeline_output_file);
+        // end else begin
+        //     $display("Using default pipeline output file: pipeline.out");
+        //     pipeline_output_file = "pipeline.out";
+        // end
 
         clock = 1'b0;
         reset = 1'b0;
@@ -218,10 +229,9 @@ module testbench;
 
         wb_fileno = $fopen(writeback_output_file);
 
-        // Open pipeline output file AFTER throwing the reset otherwise the reset state is displayed
-        open_pipeline_output_file(pipeline_output_file);
-        print_header("                                                                            D-MEM Bus &\n");
-        print_header("Cycle:      IF      |     ID      |     EX      |     MEM     |     WB      Reg Result");
+        // Open the pipeline output file after throwing reset
+        // open_pipeline_output_file(pipeline_output_file);
+        // print_header("removed for line length");
     end
 
 
@@ -247,17 +257,17 @@ module testbench;
             #2;
 
             // print the pipeline debug outputs via c code to the pipeline output file
-            print_cycles();
-            print_stage(" ", if_inst_dbg,     if_NPC_dbg    [31:0], {31'b0,if_valid_dbg});
-            print_stage("|", if_id_inst_dbg,  if_id_NPC_dbg [31:0], {31'b0,if_id_valid_dbg});
-            print_stage("|", id_ex_inst_dbg,  id_ex_NPC_dbg [31:0], {31'b0,id_ex_valid_dbg});
-            print_stage("|", ex_mem_inst_dbg, ex_mem_NPC_dbg[31:0], {31'b0,ex_mem_valid_dbg});
-            print_stage("|", mem_wb_inst_dbg, mem_wb_NPC_dbg[31:0], {31'b0,mem_wb_valid_dbg});
-            print_reg(32'b0, pipeline_commit_wr_data[31:0],
-                {27'b0,pipeline_commit_wr_idx}, {31'b0,pipeline_commit_wr_en});
-            print_membus({30'b0,proc2mem_command}, {28'b0,mem2proc_response},
-                32'b0, proc2mem_addr[31:0],
-                proc2mem_data[63:32], proc2mem_data[31:0]);
+            // print_cycles();
+            // print_stage(" ", if_inst_dbg,     if_NPC_dbg    [31:0], {31'b0,if_valid_dbg});
+            // print_stage("|", if_id_inst_dbg,  if_id_NPC_dbg [31:0], {31'b0,if_id_valid_dbg});
+            // print_stage("|", id_ex_inst_dbg,  id_ex_NPC_dbg [31:0], {31'b0,id_ex_valid_dbg});
+            // print_stage("|", ex_mem_inst_dbg, ex_mem_NPC_dbg[31:0], {31'b0,ex_mem_valid_dbg});
+            // print_stage("|", mem_wb_inst_dbg, mem_wb_NPC_dbg[31:0], {31'b0,mem_wb_valid_dbg});
+            // print_reg(32'b0, pipeline_commit_wr_data[31:0],
+            //     {27'b0,pipeline_commit_wr_idx}, {31'b0,pipeline_commit_wr_en});
+            // print_membus({30'b0,proc2mem_command}, {28'b0,mem2proc_response},
+            //     32'b0, proc2mem_addr[31:0],
+            //     proc2mem_data[63:32], proc2mem_data[31:0]);
 
             // print register write information to the writeback output file
             if (pipeline_completed_insts > 0) begin
@@ -291,7 +301,7 @@ module testbench;
                 endcase
                 $display("@@@\n@@");
                 show_clk_count;
-                print_close(); // close the pipe_print output file
+                // print_close(); // close the pipe_print output file
                 $fclose(wb_fileno);
                 #100 $finish;
             end
@@ -299,4 +309,4 @@ module testbench;
         end // if(reset)
     end
 
-endmodule // module testbench
+endmodule // testbench

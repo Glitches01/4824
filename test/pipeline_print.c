@@ -1,6 +1,6 @@
 /*
- *  pipe_print.c - Print instructions as they pass through the verisimple
- *                 pipeline.  Must compile with the '+vc' vcs flag.
+ *  pipeline_print.c - Print instructions as they pass through the verisimple
+ *                     pipeline.  Must compile with the '+vc' vcs flag.
  *
  *  Doug MacKay <dmackay@umich.edu> Fall 2003
  *
