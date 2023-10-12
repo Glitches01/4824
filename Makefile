@@ -85,7 +85,7 @@ VCS = SW_VCS=2020.12-SP2-1 vcs -sverilog +vc -Mupdate -line -full64 -kdb -nc -lc
 # a SYNTH define is added when compiling for synthesis that can be used in testbenches
 
 # remove certain warnings that generate MB of text but can be safely ignored
-VCS_BAD_WARNINGS = +warn=noTFIPC +warn=noDEBUG_DEP +warn=noENUMASSIGN
+VCS_BAD_WARNINGS = +warn=noTFIPC +warn=noDEBUG_DEP +warn=noENUMASSIGN +warn=noLCA_FEATURES_ENABLED
 
 # a reference library of standard structural cells that we link against when synthesizing
 LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
@@ -122,6 +122,8 @@ else
     AS      = riscv64-unknown-elf-as
     ELF2HEX = elf2hex
 endif
+
+GREP = grep -E --color=auto
 
 ####################################
 # ---- Executable Compilation ---- #
@@ -175,7 +177,7 @@ syn_simv: $(TESTBENCH) $(SYNTH_FILES) $(HEADERS)
 
 # a phony target to view the slack in the *.rep synthesis report file
 slack:
-	grep --color=auto "slack" synth/*.rep
+	$(GREP) "slack" synth/*.rep
 .PHONY: slack
 
 ########################################
