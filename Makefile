@@ -15,6 +15,27 @@
 .DEFAULT_GOAL = no_hazard.out
 # ^ this overrides using the first listed target as the default
 
+# ---- Module Testbenches ---- #
+# NOTE: these require files like: 'verilog/rob.sv' and 'test/rob_test.sv'
+#       which implement and test the module: 'rob'
+
+# make <module>.pass   <- greps for "@@@ Passed" or "@@@ Incorrect" in the output
+# make <module>.out    <- run the testbench (via <module>.simv)
+# make <module>.simv   <- compile the testbench executable
+# make <module>.verdi  <- run in verdi (via <module>.simv)
+# make <module>.syn.pass   <- greps for "@@@ Passed" or "@@@ Incorrect" in the output
+# make <module>.syn.out    <- run the synthesized module on the testbench
+# make <module>.syn.simv   <- compile the synthesized module with the testbench
+# make synth/<module>.vg   <- synthesize the module
+# make <module>.syn.verdi  <- run in verdi (via <module>.syn.simv)
+
+# ---- module testbench coverage ---- #
+# make <module>.coverage    <- print the coverage hierarchy report to the terminal
+# make <module>.cov.verdi   <- open the coverage report in verdi
+# make <module>.cov         <- compiles a coverage executable for the module and testbench
+# make <module>.cov.vdb     <- runs the executable and creates the <module>.cov.vdb directory
+# make <module>_cov_report  <- run urg to create human readable coverage reports
+
 # ---- Program Execution ---- #
 # these are your main commands for running programs and generating output
 # make <my_program>.out      <- run a program on simv and generate .out, .wb, and .ppln files in 'output/'
@@ -125,6 +146,146 @@ endif
 
 GREP = grep -E --color=auto
 
+################################
+# ---- Module Testbenches ---- #
+################################
+
+# This section facilitates creating individual testbenches for your modules
+# By using the following naming convention:
+# - the source file: 'verilog/rob.sv'
+# - declares a module: 'rob'
+# - with testbench in: 'test/rob_test.sv'
+# - added to TESTED_MODULES as: 'rob'
+# - with dependencies: 'rob.simv', 'rob.cov', and 'synth/rob.vg'
+
+# TODO: add more modules here
+TESTED_MODULES = mult rob
+
+# TODO: add verilog module dependencies here:
+# (do not include header files)
+# Helper function:
+DEPS = $(1).simv $(1).cov synth/$(1).vg
+
+MULT_DEPS = verilog/mult_stage.sv
+$(call DEPS,mult): $(MULT_DEPS)
+
+# No dependencies for the rob (TODO: add any you create)
+ROB_DEPS =
+$(call DEPS,rob): $(ROB_DEPS)
+
+# This allows you to use the following make targets:
+# make <module>.pass   <- greps for "@@@ Passed" or "@@@ Incorrect" in the output
+# make <module>.out    <- run the testbench (via <module>.simv)
+# make <module>.simv   <- compile the testbench executable
+# make <module>.verdi  <- run in verdi (via <module>.simv)
+# make <module>.syn.pass   <- greps for "@@@ Passed" or "@@@ Incorrect" in the output
+# make <module>.syn.out    <- run the synthesized module on the testbench
+# make <module>.syn.simv   <- compile the synthesized module with the testbench
+# make synth/<module>.vg   <- synthesize the module
+# make <module>.syn.verdi  <- run in verdi (via <module>.syn.simv)
+
+# We have also added targets for checking testbench coverage:
+# make <module>.coverage    <- print the coverage hierarchy report to the terminal
+# make <module>.cov.verdi   <- open the coverage report in verdi
+# make <module>.cov         <- compiles a coverage executable for the module and testbench
+# make <module>.cov.vdb     <- runs the executable and creates the <module>.cov.vdb directory
+# make <module>_cov_report  <- run urg to create human readable coverage reports
+
+# The following Makefile targets heavily use pattern substitution and static pattern rules
+# See these links if you're curious about how these work:
+# - https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
+# - https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
+# - https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html
+
+# You shouldn't need to change things below here
+
+# ---- Running ---- #
+
+# run compiled executables ('make %.out' is linked to 'make output/%.out' further below)
+# using this syntax avoids overlapping with the 'make <my_program>.out' targets
+$(TESTED_MODULES:%=output/%.out) $(TESTED_MODULES:%=output/%.syn.out): output/%.out: %.simv | output
+	@$(call PRINT_COLOR, 5, running $<)
+	./$< | tee $@
+	@$(call PRINT_COLOR, 2, output is in $@)
+
+# print in green or red passed or failed (must $display @@@ Passed or @@@ Incorrect)
+%.pass: output/%.out
+	@GREP_COLOR="01;31" $(GREP) -i '@@@ ?Incorrect' $< || \
+	GREP_COLOR="01;32" $(GREP) -i '@@@ ?Passed' $<
+.PHONY: %.pass
+
+# run many types of things in verdi
+%.verdi: %.simv
+	@$(call PRINT_COLOR, 5, running $< with verdi )
+	./$< -gui=verdi
+.PHONY: %.verdi
+
+# ---- Compiling Verilog ---- #
+
+# the normal simulation executable will run your testbench on simulated modules
+$(TESTED_MODULES:=.simv): %.simv: test/%_test.sv verilog/%.sv $(HEADERS)
+	@$(call PRINT_COLOR, 5, compiling the simulation executable $@)
+	@$(call PRINT_COLOR, 3, NOTE: if this is slow to startup: run '"module load vcs verdi synopsys-synth"')
+	$(VCS) $(filter-out $(HEADERS),$^) -o $@
+	@$(call PRINT_COLOR, 6, finished compiling $@)
+
+# this also generates many other files, see the tcl script's introduction for info on each of them
+synth/%.vg: verilog/%.sv $(TCL_SCRIPT) $(HEADERS)
+	@$(call PRINT_COLOR, 5, synthesizing the $* module)
+	@$(call PRINT_COLOR, 3, this might take a while...)
+	@$(call PRINT_COLOR, 3, NOTE: if this is slow to startup: run '"module load vcs verdi synopsys-synth"')
+	# pipefail causes the command to exit on failure even though it's piping to tee
+	set -o pipefail; cd synth && \
+	MODULE=$* SOURCES="$(filter-out $(TCL_SCRIPT) $(HEADERS),$^)" \
+	dc_shell-t -f $(notdir $(TCL_SCRIPT)) | tee $*_synth.out
+	@$(call PRINT_COLOR, 6, finished synthesizing $@)
+
+# the synthesis executable runs your testbench on the synthesized versions of your modules
+$(TESTED_MODULES:=.syn.simv): %.syn.simv: test/%_test.sv synth/%.vg $(HEADERS)
+	@$(call PRINT_COLOR, 5, compiling the synthesis executable $@)
+	$(VCS) +define+SYNTH $(filter-out $(HEADERS),$^) $(LIB) -o $@
+	@$(call PRINT_COLOR, 6, finished compiling $@)
+
+# ---- Coverage targets ---- #
+
+# This section adds targets to run module testbenches with coverage output
+
+# VCS argument to both build and run for coverage
+VCS_COVG = -cm line+fsm+cond+tgl+branch
+
+$(TESTED_MODULES:=.cov): %.cov: test/%_test.sv verilog/%.sv $(HEADERS)
+	@$(call PRINT_COLOR, 5, compiling the coverage executable $@)
+	@$(call PRINT_COLOR, 3, NOTE: if this is slow to startup: run '"module load vcs verdi synopsys-synth"')
+	$(VCS) $(VCS_COVG) $(filter-out $(HEADERS),$^) -o $@
+	@$(call PRINT_COLOR, 6, finished compiling $@)
+
+# Run the testbench to produce a *.vdb directory with coverage info
+$(TESTED_MODULES:%=output/%.cov.out): output/%.cov.out: %.cov | output
+	@$(call PRINT_COLOR, 5, running $<)
+	./$< $(VCS_COVG) | tee output/$*.cov.out
+	@$(call PRINT_COLOR, 2, created coverage dir $<.vdb and saved output to $@)
+
+# A layer of indirection is needed to avoid re-making??? :/
+%.cov.vdb: output/%.cov.out ;
+
+# Use urg to generate human-readable report files in text mode (alternative is html)
+$(TESTED_MODULES:=_cov_report): %_cov_report: %.cov.vdb | output
+	@$(call PRINT_COLOR, 5, outputting coverage report in $@)
+	urg -format text -dir $< -report $@
+	@$(call PRINT_COLOR, 2, coverage report is in $@)
+
+# view the coverage hierarchy report
+$(TESTED_MODULES:=.coverage): %.coverage: %_cov_report
+	@$(call PRINT_COLOR, 2, printing coverage hierarchy - see $< for more)
+	cat $</hierarchy.txt
+
+# open the coverage info in verdi
+$(TESTED_MODULES:=.cov.verdi): %.cov.verdi: %.cov.vdb
+	@$(call PRINT_COLOR, 5, opening verdi for $* coverage)
+	./$< -gui=verdi -cov -covdir $<
+
+.PHONY: %.coverage %.cov.verdi
+
 ####################################
 # ---- Executable Compilation ---- #
 ####################################
@@ -145,11 +306,9 @@ TESTBENCH = test/pipeline_test.sv \
 # you could simplify this line with $(wildcard verilog/*.sv) - but the manual way is more explicit
 SOURCES = verilog/pipeline.sv \
           verilog/regfile.sv \
-          verilog/stage_if.sv \
-          verilog/stage_id.sv \
-          verilog/stage_ex.sv \
-          verilog/stage_mem.sv \
-          verilog/stage_wb.sv
+          verilog/icache.sv \
+          verilog/mult.sv \
+          verilog/mult_stage.sv \
 
 SYNTH_FILES = synth/pipeline.vg
 
@@ -160,13 +319,16 @@ simv: $(TESTBENCH) $(SOURCES) $(HEADERS)
 	$(VCS) $(filter-out $(HEADERS),$^) -o $@
 	@$(call PRINT_COLOR, 6, finished compiling $@)
 
+# NOTE: this has been changed to avoid conflicting with the module %.vg rule
 # this also generates many other files, see the tcl script's introduction for info on each of them
-synth/%.vg: $(SOURCES) $(TCL_SCRIPT) $(HEADERS)
-	@$(call PRINT_COLOR, 5, synthesizing the $* module)
+synth/pipeline.vg: $(SOURCES) $(TCL_SCRIPT) $(HEADERS)
+	@$(call PRINT_COLOR, 5, synthesizing the pipeline)
 	@$(call PRINT_COLOR, 3, this might take a while...)
 	@$(call PRINT_COLOR, 3, NOTE: if this is slow to startup: run '"module load vcs verdi synopsys-synth"')
 	# pipefail causes the command to exit on failure even though it's piping to tee
-	set -o pipefail; cd synth && MODULE=$* SOURCES="$(SOURCES)" dc_shell-t -f $(notdir $(TCL_SCRIPT)) | tee $*_synth.out
+	set -o pipefail; cd synth && \
+	MODULE=pipeline SOURCES="$(SOURCES)" \
+	dc_shell-t -f $(notdir $(TCL_SCRIPT)) | tee $*_synth.out
 	@$(call PRINT_COLOR, 6, finished synthesizing $@)
 
 # the synthesis executable runs your testbench on the synthesized versions of your modules
@@ -402,7 +564,8 @@ nuke: clean clean_output clean_synth clean_programs
 clean_exe:
 	@$(call PRINT_COLOR, 3, removing compiled executable files)
 	rm -rf *simv *.daidir csrc *.key   # created by simv/syn_simv/vis_simv
-	rm -rf vcdplus.vpd vc_hdrs.h       # created by simv/syn_simv/vis_simv
+	rm -rf *.vdb *.vpd vc_hdrs.h       # created by simv/syn_simv/vis_simv
+	rm -rf *.cov *cov_report cm.log    # coverage files
 	rm -rf verdi* novas* *fsdb*        # verdi files
 	rm -rf dve* inter.vpd DVEfiles     # old DVE debugger
 
