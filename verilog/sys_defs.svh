@@ -32,7 +32,7 @@
 `define BRANCH_PRED_SZ xx
 `define LSQ_SZ xx
 
-// functional units
+// functional units (you should decide if you want more or fewer types of FUs)
 `define NUM_FU_ALU xx
 `define NUM_FU_MULT xx
 `define NUM_FU_LOAD xx

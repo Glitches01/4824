@@ -6,6 +6,10 @@
 
 `include "verilog/sys_defs.svh"
 
+// P4 TODO: You must implement the different types of multiplication here and
+//          in mult_stage. See the original ALU and it's different behavior for
+//          different multiply functions.
+
 module mult (
     input clock, reset,
     input [63:0] mcand, mplier,
