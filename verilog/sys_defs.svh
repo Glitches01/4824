@@ -13,6 +13,34 @@
 // all files should `include "sys_defs.svh" to at least define the timescale
 `timescale 1ns/100ps
 
+///////////////////////////////////
+// ---- Starting Parameters ---- //
+///////////////////////////////////
+
+// some starting parameters that you should set
+// this is *your* processor, you decide these values (try analyzing which is best!)
+
+// superscalar width
+`define N 1
+
+// sizes
+`define ROB_SZ xx
+`define RS_SZ xx
+`define PHYS_REG_SZ (32 + `ROB_SZ)
+
+// worry about these later
+`define BRANCH_PRED_SZ xx
+`define LSQ_SZ xx
+
+// functional units
+`define NUM_FU_ALU xx
+`define NUM_FU_MULT xx
+`define NUM_FU_LOAD xx
+`define NUM_FU_STORE xx
+
+// number of mult stages (2, 4, or 8)
+`define MULT_STAGES 4
+
 ///////////////////////////////
 // ---- Basic Constants ---- //
 ///////////////////////////////
@@ -38,11 +66,21 @@
 // ---- Memory Definitions ---- //
 //////////////////////////////////
 
-// this will change for project 4
+// Cache mode removes the byte-level interface from memory, so it always returns
+// a double word. The original processor won't work with this defined. Your new
+// processor will have to account for this effect on mem.
+// Notably, you can no longer write data without first reading.
+`define CACHE_MODE
+
+// you are not allowed to change this definition for your final processor
 // the project 3 processor has a massive boost in performance just from having no mem latency
 // see if you can beat it's CPI in project 4 even with a 100ns latency!
-`define MEM_LATENCY_IN_CYCLES  0
+// `define MEM_LATENCY_IN_CYCLES  0
+`define MEM_LATENCY_IN_CYCLES (100.0/`CLOCK_PERIOD+0.49999)
+// the 0.49999 is to force ceiling(100/period). The default behavior for
+// float to integer conversion is rounding to nearest
 
+// How many memory requests can be waiting at once
 `define NUM_MEM_TAGS 15
 
 `define MEM_SIZE_IN_BYTES (64*1024)
@@ -272,7 +310,7 @@ typedef struct packed {
     logic       uncond_branch; // Is inst an unconditional branch?
     logic       halt;          // Is this a halt?
     logic       illegal;       // Is this instruction illegal?
-    logic       csr_op;        // Is this a CSR operation? (we only used this as a cheap way to get return code)
+    logic       csr_op;        // Is this a CSR operation? (we use this to get return code)
 
     logic       valid;
 } ID_EX_PACKET;
