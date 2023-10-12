@@ -135,8 +135,15 @@ memory's response tag until memory returns that tag with the data. More
 about how our processor's memory works will be presented in the final
 lab section.
 
-As promised, we've copied the multiplier from project 2 and moved the
-`` `STAGES`` definition to `sys_defs.svh` as `` `MULT_STAGES``.
+The file `psel_gen.sv` implements an incredibly efficient parameterized
+priority selector (remember project 1?!). many tasks in superscalar
+processors come down to priority selection, so instead of writing
+manual for-loops, try to use this module. It is faster than any
+priority selector the instructors are aware of (as far as my last
+conversation about it with Brehob).
+
+As promised, we've also copied the multiplier from project 2 and moved
+the `` `STAGES`` definition to `sys_defs.svh` as `` `MULT_STAGES``.
 This is set to 4 to start, but you can change it to 2 or 8 depending on
 your processor's clock period.
 
