@@ -101,7 +101,7 @@
 export CLOCK_PERIOD = 30.0
 
 # the Verilog Compiler command and arguments
-VCS = SW_VCS=2020.12-SP2-1 vcs -sverilog +vc -Mupdate -line -full64 -kdb -nc -lca \
+VCS = SW_VCS=2020.12-SP2-1 vcs -sverilog +vc -Mupdate -line -full64 -kdb -lca -nc \
       -debug_access+all+reverse $(VCS_BAD_WARNINGS) +define+CLOCK_PERIOD=$(CLOCK_PERIOD)
 # a SYNTH define is added when compiling for synthesis that can be used in testbenches
 
@@ -113,6 +113,10 @@ LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
 
 # the EECS 470 synthesis script
 TCL_SCRIPT = synth/470synth.tcl
+
+# Set the shell's pipefail option: causes return values through pipes to match the last non-zero value
+# (useful for, i.e. piping to `tee`)
+SHELL := $(SHELL) -o pipefail
 
 # The following are new in project 3:
 
