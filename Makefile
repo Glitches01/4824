@@ -109,7 +109,7 @@ VCS = SW_VCS=2020.12-SP2-1 vcs -sverilog +vc -Mupdate -line -full64 -kdb -lca -n
 VCS_BAD_WARNINGS = +warn=noTFIPC +warn=noDEBUG_DEP +warn=noENUMASSIGN +warn=noLCA_FEATURES_ENABLED
 
 # a reference library of standard structural cells that we link against when synthesizing
-LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
+LIB = lec25dscc25.v
 
 # the EECS 470 synthesis script
 TCL_SCRIPT = synth/470synth.tcl
@@ -133,7 +133,7 @@ DEBUG_FLAG = -g
 
 # this is our RISC-V compiler toolchain
 # NOTE: you can use a local riscv install to compile programs by setting CAEN to 0
-CAEN = 1
+CAEN = 0
 ifeq (1, $(CAEN))
     GCC     = riscv gcc
     OBJCOPY = riscv objcopy
@@ -141,10 +141,10 @@ ifeq (1, $(CAEN))
     AS      = riscv as
     ELF2HEX = riscv elf2hex
 else
-    GCC     = riscv64-unknown-elf-gcc
-    OBJCOPY = riscv64-unknown-elf-objcopy
-    OBJDUMP = riscv64-unknown-elf-objdump
-    AS      = riscv64-unknown-elf-as
+    GCC     = riscv32-unknown-elf-gcc
+    OBJCOPY = riscv32-unknown-elf-objcopy
+    OBJDUMP = riscv32-unknown-elf-objdump
+    AS      = riscv32-unknown-elf-as
     ELF2HEX = elf2hex
 endif
 
@@ -398,7 +398,7 @@ ASLINKERS  = programs/aslinker.lds
 
 # turn any elf file into a hex memory file ready for the testbench
 %.mem: %.elf
-	$(ELF2HEX) 8 8192 $< > $@
+	$(ELF2HEX) --bit-width 64 --input $< --output $@
 	@$(call PRINT_COLOR, 6, created memory file $@)
 	@$(call PRINT_COLOR, 3, NOTE: to see RISC-V assembly run: '"make $*.dump"')
 	@$(call PRINT_COLOR, 3, for \*.c sources also try: '"make $*.debug.dump"')
