@@ -2,7 +2,7 @@
 # ---- Introduction ---- #
 ##########################
 
-# Welcome to the EECS 470 design compiler synthesis script!
+# Welcome to the CSEE 4824 design compiler synthesis script!
 # this will synthesize a module with predefined constraints using the synopsys design compiler
 # and supports optional hierarchical synthesis or module parameters
 # this is written in the Tool command language for Synopsys Design Compiler
@@ -92,17 +92,17 @@ try {
 ##########################################
 
 # these variables are needed by analyze and elaborate and by the 'link' command further down
-
-set target_library lec25dscc25_TT.db
+set ::target_library_name asap7sc7p5t_merged_RVT_FF_nldm_211120
+set target_library ${::target_library_name}.db
 
 # link_library is a variable for resolving standard cell references in designs
 # the standard cell library we use is in the lec25dscc25_TT.db file
 # the * will have dc_shell search its own library first, then the target
-set link_library "* $target_library"
+set link_library "* ${target_library}"
 
 # the search path is where dc_shell will search for files to read and load
-# lec25dscc25_TT.db is located in the last location
-set search_path [list "./" "../" "/afs/umich.edu/class/eecs470/lib/synopsys/"]
+# asap7sc7p5t_merged_RVT_FF_nldm_211120.db is located in the last location
+set search_path [list "./" "../" "/homes/user/fac/tk3070/tmp/synthesis/"]
 
 ###########################################
 # ---- setup miscellaneous variables ---- #
@@ -142,15 +142,23 @@ if { [info exists child_modules] && $child_modules ne "" &&
 # analyze doesn't accept header files but does allow expanding parameters
 if { ![analyze -format sverilog $sources] } {exit 1}
 
+#read_file -format sverilog $sources -define SYNTH
+
 # elaborate, potentially with parameters
 if { [info exists module_parameters] && $module_parameters ne ""} {
-  if { ![elaborate $design_name -param "$module_parameters"] } {exit 1}
+  elaborate $design_name -param "$module_parameters"
   set design_name ${design_name}_${param_suffix}
 } else {
-  if { ![elaborate $design_name] } {exit 1}
+  elaborate $design_name
 }
 
-if { [current_design $design_name] == [list] } {exit 1}
+try {
+  if { [current_design $design_name] == [list] } {exit 1}
+} on error {msg} {
+  puts "ERROR: could not find current design"
+  puts "Message: $msg"
+  exit 1
+}
 
 #########################################
 # ---- compilation setup functions ---- #
@@ -158,22 +166,22 @@ if { [current_design $design_name] == [list] } {exit 1}
 
 # I'm defining functions here to break out and *name* the separate things we do for setup
 
-proc eecs_470_set_compilation_flags {} {
+proc csee_4824_set_compilation_flags {} {
   set_app_var compile_top_all_paths "true"
   set_app_var auto_wire_load_selection "false"
   set_app_var compile_seqmap_synchronous_extraction "true" ;# seems to be unused?
 }
 
-proc eecs_470_set_wire_load {design_name} {
+proc csee_4824_set_wire_load {design_name} {
   set WIRE_LOAD tsmcwire
-  set LOGICLIB lec25dscc25_TT
+  set LOGICLIB $::target_library_name
 
   set_wire_load_model -name $WIRE_LOAD -lib $LOGICLIB $design_name
   set_wire_load_mode top
   set_fix_multiple_port_nets -outputs -buffer_constants
 }
 
-proc eecs_470_generate_clock {clock_name clock_period} {
+proc csee_4824_generate_clock {clock_name clock_period} {
   set CLK_UNCERTAINTY 0.1 ;# the latency/transition time of the clock
 
   create_clock -period $clock_period -name $clock_name [find port $clock_name]
@@ -181,7 +189,7 @@ proc eecs_470_generate_clock {clock_name clock_period} {
   set_fix_hold $clock_name
 }
 
-proc eecs_470_setup_paths {clock_name} {
+proc csee_4824_setup_paths {clock_name} {
   set DRIVING_CELL dffacs1 ;# the driving cell from the link_library
 
   # TODO: can we just remove these lines?
@@ -192,7 +200,7 @@ proc eecs_470_setup_paths {clock_name} {
   remove_driving_cell [find port $clock_name]
 }
 
-proc eecs_470_set_design_constraints {reset_name clock_name clock_period} {
+proc csee_4824_set_design_constraints {reset_name clock_name clock_period} {
   set AVG_FANOUT_LOAD 10
   set AVG_LOAD 0.1
   set AVG_INPUT_DELAY 0.1   ;# ns
@@ -233,16 +241,16 @@ proc eecs_470_set_design_constraints {reset_name clock_name clock_period} {
 # ---- synthesize the design! ---- #
 ####################################
 
-eecs_470_set_compilation_flags
+csee_4824_set_compilation_flags
 
 # link our current design against the link_library
 # exit if there was an error
 if { ![link] } {exit 1}
 
-eecs_470_set_wire_load $design_name
-eecs_470_generate_clock $clock_name $clock_period
-eecs_470_setup_paths $clock_name
-eecs_470_set_design_constraints $reset_name $clock_name $clock_period
+csee_4824_set_wire_load $design_name
+csee_4824_generate_clock $clock_name $clock_period
+csee_4824_setup_paths $clock_name
+csee_4824_set_design_constraints $reset_name $clock_name $clock_period
 
 # separate the subdesign instances to improve synthesis (excluding set_dont_touch designs)
 # do this before writing the check file
@@ -287,4 +295,5 @@ read_file -format verilog $netlist_file
 current_design $design_name
 redirect -append $rep_file { report_reference -nosplit }
 
-exit 0 ;# success! (maybe)
+# exit with success
+exit 0

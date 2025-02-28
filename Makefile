@@ -4,7 +4,7 @@
 
 # Welcome to the Project 3 VeriSimpleV Processor makefile!
 # this file will build and run a fully synthesizable RISC-V verilog processor
-# and is an extended version of the EECS 470 standard makefile
+# and is an extended version of the CSEE 4824 standard makefile
 
 # NOTE: this file should need no changes for project 3
 # but it will be reused for project 4, where you will likely add your own new files and functionality
@@ -98,21 +98,35 @@
 # there should be no need to change anything for project 3
 
 # this is a global clock period variable used in the tcl script and referenced in testbenches
-export CLOCK_PERIOD = 30.0
+export CLOCK_PERIOD = 10000.0
+
+# Path variables
+export RISCV32_HOME = /homes/user/fac/tk3070/tmp/riscv-gcc/riscv-32/bin
+export ELF2HEX_HOME = /homes/user/fac/tk3070/tmp/elf2hex-build/bin
+#export PATH += :/homes/user/fac/tk3070/tmp/riscv-gcc/riscv-32/bin/:/homes/user/fac/tk3070/tmp/elf2hex-build/bin/
+ifeq (, $(LD_LIBRARY_PATH))
+	export LD_LIBRARY_PATH = /homes/user/fac/tk3070/tmp/test/csee4824-project-3-main/tmp
+else
+	export LD_LIBRARY_PATH += :/homes/user/fac/tk3070/tmp/test/csee4824-project-3-main/tmp
+endif
 
 # the Verilog Compiler command and arguments
-VCS = SW_VCS=2020.12-SP2-1 vcs -sverilog +vc -Mupdate -line -full64 -kdb -lca -nc \
-      -debug_access+all+reverse $(VCS_BAD_WARNINGS) +define+CLOCK_PERIOD=$(CLOCK_PERIOD)
+VCS = SW_VCS=2020.12-SP2-1 vcs -CFLAGS "-I /homes/user/fac/tk3070/conda/include" -sverilog +vc -Mupdate -line -full64 -kdb -lca -nc \
+      -debug_access+all+reverse $(VCS_BAD_WARNINGS) +define+CLOCK_PERIOD=$(CLOCK_PERIOD)ps
 # a SYNTH define is added when compiling for synthesis that can be used in testbenches
 
 # remove certain warnings that generate MB of text but can be safely ignored
-VCS_BAD_WARNINGS = +warn=noTFIPC +warn=noDEBUG_DEP +warn=noENUMASSIGN +warn=noLCA_FEATURES_ENABLED
+VCS_BAD_WARNINGS = +warn=noTFIPC +warn=noDEBUG_DEP +warn=noENUMASSIGN
+
+# Verdi executable setup
+export VERDI_HOME = /tools/synopsys/verdi/verdi/U-2023.03-SP2-1
+VERDI_EXE = $(VERDI_HOME)/bin/verdi
 
 # a reference library of standard structural cells that we link against when synthesizing
-LIB = lec25dscc25.v
+LIB = $(wildcard /homes/user/fac/tk3070/tmp/synthesis/OpenROAD-flow-scripts/flow/platforms/asap7/work_around_yosys/asap7sc7p5t*.v)
 
-# the EECS 470 synthesis script
-TCL_SCRIPT = synth/470synth.tcl
+# the CSEE 4824 synthesis script
+TCL_SCRIPT = synth/csee4824_synth.tcl
 
 # Set the shell's pipefail option: causes return values through pipes to match the last non-zero value
 # (useful for, i.e. piping to `tee`)
@@ -141,11 +155,11 @@ ifeq (1, $(CAEN))
     AS      = riscv as
     ELF2HEX = riscv elf2hex
 else
-    GCC     = riscv32-unknown-elf-gcc
-    OBJCOPY = riscv32-unknown-elf-objcopy
-    OBJDUMP = riscv32-unknown-elf-objdump
-    AS      = riscv32-unknown-elf-as
-    ELF2HEX = elf2hex
+    GCC     = $(RISCV32_HOME)/riscv32-unknown-elf-gcc
+    OBJCOPY = $(RISCV32_HOME)/riscv32-unknown-elf-objcopy
+    OBJDUMP = $(RISCV32_HOME)/riscv32-unknown-elf-objdump
+    AS      = $(RISCV32_HOME)/riscv32-unknown-elf-as
+    ELF2HEX = $(ELF2HEX_HOME)/elf2hex
 endif
 
 GREP = grep -E --color=auto
@@ -164,6 +178,8 @@ GREP = grep -E --color=auto
 
 # TODO: add more modules here
 TESTED_MODULES = mult rob
+
+MODULE = pipeline
 
 # TODO: add verilog module dependencies here:
 # (do not include header files)
@@ -234,7 +250,7 @@ $(TESTED_MODULES:=.simv): %.simv: test/%_test.sv verilog/%.sv $(HEADERS)
 	@$(call PRINT_COLOR, 6, finished compiling $@)
 
 # this also generates many other files, see the tcl script's introduction for info on each of them
-synth/%.vg: verilog/%.sv $(TCL_SCRIPT) $(HEADERS)
+synth/%.vg: verilog/%.sv | $(TCL_SCRIPT) $(HEADERS)
 	@$(call PRINT_COLOR, 5, synthesizing the $* module)
 	@$(call PRINT_COLOR, 3, this might take a while...)
 	@$(call PRINT_COLOR, 3, NOTE: if this is slow to startup: run '"module load vcs verdi synopsys-synth"')
@@ -504,17 +520,17 @@ simulate_all_syn: syn_simv compile_all $(OUTPUTS:=.syn.out)
 
 # this creates a directory verdi will use if it doesn't exist yet
 verdi_dir:
-	mkdir -p /tmp/$${USER}470
+	mkdir -p /workdir/$${USER}_csee4824
 .PHONY: verdi_dir
 
 novas.rc: initialnovas.rc
 	sed s/UNIQNAME/$$USER/ initialnovas.rc > novas.rc
 
 %.verdi: programs/%.mem simv novas.rc verdi_dir
-	./simv -gui=verdi +MEMORY=$< +WRITEBACK=/dev/null +PIPELINE=/dev/null
+	./simv -gui=$(VERDI_EXE) +MEMORY=$< +WRITEBACK=/dev/null +PIPELINE=/dev/null
 
 %.syn.verdi: programs/%.mem syn_simv novas.rc verdi_dir
-	./syn_simv -gui=verdi +MEMORY=$< +WRITEBACK=/dev/null +PIPELINE=/dev/null
+	./syn_simv -gui=$(VERDI_EXE) +MEMORY=$< +WRITEBACK=/dev/null +PIPELINE=/dev/null
 
 .PHONY: %.verdi
 

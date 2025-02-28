@@ -30,7 +30,7 @@ module pipeline (
     output logic [4:0]       pipeline_commit_wr_idx,
     output logic [`XLEN-1:0] pipeline_commit_wr_data,
     output logic             pipeline_commit_wr_en,
-    output logic [`XLEN-1:0] pipeline_commit_NPC,
+    output logic [`XLEN-1:0] pipeline_commit_NPC
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3

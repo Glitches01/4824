@@ -93,14 +93,16 @@ module testbench;
         .proc2mem_command (proc2mem_command),
         .proc2mem_addr    (proc2mem_addr),
         .proc2mem_data    (proc2mem_data),
+`ifndef CACHE_MODE
         .proc2mem_size    (proc2mem_size),
+`endif
 
         .pipeline_completed_insts (pipeline_completed_insts),
         .pipeline_error_status    (pipeline_error_status),
         .pipeline_commit_wr_data  (pipeline_commit_wr_data),
         .pipeline_commit_wr_idx   (pipeline_commit_wr_idx),
         .pipeline_commit_wr_en    (pipeline_commit_wr_en),
-        .pipeline_commit_NPC      (pipeline_commit_NPC),
+        .pipeline_commit_NPC      (pipeline_commit_NPC)
 
         // .if_NPC_dbg       (if_NPC_dbg),
         // .if_inst_dbg      (if_inst_dbg),
