@@ -98,7 +98,7 @@
 # there should be no need to change anything for project 3
 
 # this is a global clock period variable used in the tcl script and referenced in testbenches
-export CLOCK_PERIOD = 10000.0
+export CLOCK_PERIOD = 1000.0
 
 # Path variables
 export RISCV32_HOME = /homes/user/fac/tk3070/tmp/riscv-gcc/riscv-32/bin
@@ -237,7 +237,7 @@ $(TESTED_MODULES:%=output/%.out) $(TESTED_MODULES:%=output/%.syn.out): output/%.
 # run many types of things in verdi
 %.verdi: %.simv
 	@$(call PRINT_COLOR, 5, running $< with verdi )
-	./$< -gui=verdi
+	./$< -gui=$(VERDI_EXE)
 .PHONY: %.verdi
 
 # ---- Compiling Verilog ---- #
@@ -302,7 +302,7 @@ $(TESTED_MODULES:=.coverage): %.coverage: %_cov_report
 # open the coverage info in verdi
 $(TESTED_MODULES:=.cov.verdi): %.cov.verdi: %.cov.vdb
 	@$(call PRINT_COLOR, 5, opening verdi for $* coverage)
-	./$< -gui=verdi -cov -covdir $<
+	./$(<:.vdb=) -gui=$(VERDI_EXE) -cov -covdir $<
 
 .PHONY: %.coverage %.cov.verdi
 
