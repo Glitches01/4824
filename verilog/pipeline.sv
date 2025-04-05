@@ -85,11 +85,11 @@ module pipeline (
     logic [4:0]       wb_regfile_idx;
     logic [`XLEN-1:0] wb_regfile_data;
 
-    //////////////////////////////////////////////////
-    //                                              //
-    //                Memory Outputs                //
-    //                                              //
-    //////////////////////////////////////////////////
+//////////////////////////////////////////////////
+//                                              //
+//                Memory Outputs                //
+//                                              //
+//////////////////////////////////////////////////
 
     // these signals go to and from the processor and memory
     // we give precedence to the mem stage over instruction fetch
@@ -104,7 +104,7 @@ module pipeline (
             proc2mem_size    = proc2Dmem_size;  // size is never DOUBLE in project 3
 `endif
         end else begin                          // read an INSTRUCTION from memory
-            proc2mem_command = BUS_LOAD;
+            proc2mem_command = proc2Imem_command;
             proc2mem_addr    = proc2Imem_addr;
 `ifndef CACHE_MODE
             proc2mem_size    = DOUBLE;          // instructions load a full memory line (64 bits)
@@ -112,6 +112,42 @@ module pipeline (
         end
         proc2mem_data = {32'b0, proc2Dmem_data};
     end
+
+    /////////////////////////////////////////////////////////////////////////
+    //                                                                     //
+    //  Instance Name :  u_icache                                          //
+    //                                                                     //
+    //  Description :  Normal icache provided by 4824                      //
+    //                                                                     //
+    /////////////////////////////////////////////////////////////////////////
+    icache u_icache(
+        .clock(clock),
+        .reset(reset),
+
+    // From memory
+        .Imem2proc_response(mem2proc_response), // zero = no response, others = response, used for compare tag
+        .Imem2proc_data(mem2proc_data),         // data from mem
+        .Imem2proc_tag(mem2proc_tag),           // tag == response -> got data from memory
+
+    // From fetch stage
+        .proc2Icache_addr(),                    // addr request
+        // .proc2Ocacje_req(),                  // Normally we should have
+
+    // To memory
+        .proc2Imem_command(proc2Imem_command),  // None, Load
+        .proc2Imem_addr(proc2Imem_addr)         // addr,
+
+    // To fetch stage
+        .Icache_data_out(),                     //data
+        .Icache_valid_out()                     //valid_out, also stands for hit, but normally I guess hit is seperate
+    );
+
+//////////////////////////////////////////////////
+//                                              //
+//                  IF-Stage                    //
+//                                              //
+//////////////////////////////////////////////////
+
 
     //////////////////////////////////////////////////
     //                                              //
