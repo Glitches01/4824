@@ -76,7 +76,8 @@
 // the project 3 processor has a massive boost in performance just from having no mem latency
 // see if you can beat it's CPI in project 4 even with a 100ns latency!
 //`define MEM_LATENCY_IN_CYCLES  0
- `define MEM_LATENCY_IN_CYCLES (100.0/`CLOCK_PERIOD+0.49999)//Imp: Set to Zero to Make P3 Run
+`define SYNTH_CLOCK_PERIOD     10
+ `define MEM_LATENCY_IN_CYCLES (100.0/`SYNTH_CLOCK_PERIOD+0.49999)//Imp: Set to Zero to Make P3 Run
 // the 0.49999 is to force ceiling(100/period). The default behavior for
 // float to integer conversion is rounding to nearest
 
@@ -268,13 +269,84 @@ typedef enum logic [4:0] {
 ////////////////////////////////
 // ---- Datapath Packets ---- //
 ////////////////////////////////
-
+`define SD #1
 /**
  * Packets are used to move many variables between modules with
  * just one datatype, but can be cumbersome in some circumstances.
  *
  * Define new ones in project 4 at your own discretion
  */
+
+//Cache
+`define CACHE_LINE 32
+`define CACHE_LINE_BITS $clog2(`CACHE_LINE)
+`define ICACHE_WAY 2
+`define ICACHE_LINE_NUM  (`CACHE_LINE/`ICACHE_WAY)
+`define ICACHE_TAG_WIDTH (13-$clog2(`ICACHE_LINE_NUM))
+
+`define DCACHE_WAY 1
+`define DCACHE_LINE_NUM  (`CACHE_LINE/`DCACHE_WAY)
+`define DCACHE_TAG_WIDTH (13-$clog2(`DCACHE_LINE_NUM))
+
+typedef struct packed {
+    logic [63:0]                  data;
+    // (13 bits) since only need 16 bits to access all memory and 3 are the offset
+    logic [12-`CACHE_LINE_BITS:0] tags;
+    logic                         valid;
+} ICACHE_ENTRY;
+
+typedef enum logic [1:0] {
+	IDLE = 2'b00,
+	LOAD = 2'b01,
+	PREF = 2'b10
+} PREFETCH_STATE;
+
+typedef struct packed {
+	logic [63:0] data;
+	logic [8:0] tag;
+	logic		 valid;
+	logic		 dirty;
+} CACHE_LINE;
+
+//ICache ------ IF
+/**
+ * ICACHE2IF_PACKET:
+ * Data from icache to if
+ */
+
+
+ typedef struct packed {
+	logic [63:0] Icache_data_out;
+	// logic             Icache_hit;
+	logic             Icache_valid_out;
+} ICACHE_IF_PACKET;
+
+/**
+ * IF2ICACHE_PACKET:
+ * Data from icache to if
+ */
+typedef struct packed {
+	logic [`XLEN-1:0] Icache_addr_in;
+	logic             Icache_request;
+} IF_ICACHE_PACKET;
+
+
+
+
+
+
+
+
+/**
+ * IF_DP_PACKET:
+ * Data from if to dp
+ */
+typedef struct packed {
+	logic valid; // If low, the data in this struct is garbage
+    INST  [1:0] inst;  // fetched instruction out
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
+} IF_IB_PACKET;
 
 /**
  * IF_ID Packet:

@@ -58,21 +58,6 @@ module pipeline (
     //                                              //
     //////////////////////////////////////////////////
 
-    // Pipeline register enables
-    logic if_id_enable, id_ex_enable, ex_mem_enable, mem_wb_enable;
-
-    // Outputs from IF-Stage and IF/ID Pipeline Register
-    logic [`XLEN-1:0] proc2Imem_addr;
-    IF_ID_PACKET if_packet, if_id_reg;
-
-    // Outputs from ID stage and ID/EX Pipeline Register
-    ID_EX_PACKET id_packet, id_ex_reg;
-
-    // Outputs from EX-Stage and EX/MEM Pipeline Register
-    EX_MEM_PACKET ex_packet, ex_mem_reg;
-
-    // Outputs from MEM-Stage and MEM/WB Pipeline Register
-    MEM_WB_PACKET mem_packet, mem_wb_reg;
 
     // Outputs from MEM-Stage to memory
     logic [`XLEN-1:0] proc2Dmem_addr;
@@ -96,22 +81,30 @@ module pipeline (
     // note that there is no latency in project 3
     // but there will be a 100ns latency in project 4
 
-    always_comb begin
-        if (proc2Dmem_command != BUS_NONE) begin // read or write DATA from memory
-            proc2mem_command = proc2Dmem_command;
-            proc2mem_addr    = proc2Dmem_addr;
-`ifndef CACHE_MODE
-            proc2mem_size    = proc2Dmem_size;  // size is never DOUBLE in project 3
-`endif
-        end else begin                          // read an INSTRUCTION from memory
-            proc2mem_command = proc2Imem_command;
-            proc2mem_addr    = proc2Imem_addr;
-`ifndef CACHE_MODE
-            proc2mem_size    = DOUBLE;          // instructions load a full memory line (64 bits)
-`endif
-        end
-        proc2mem_data = {32'b0, proc2Dmem_data};
-    end
+//     always_comb begin
+//         if (proc2Dmem_command != BUS_NONE) begin // read or write DATA from memory
+//             proc2mem_command = proc2Dmem_command;
+//             proc2mem_addr    = proc2Dmem_addr;
+// `ifndef CACHE_MODE
+//             proc2mem_size    = proc2Dmem_size;  // size is never DOUBLE in project 3
+// `endif
+//         end else begin                          // read an INSTRUCTION from memory
+//             proc2mem_command = proc2Imem_command;
+//             proc2mem_addr    = proc2Imem_addr;
+// `ifndef CACHE_MODE
+//             proc2mem_size    = DOUBLE;          // instructions load a full memory line (64 bits)
+// `endif
+//         end
+//         proc2mem_data = {32'b0, proc2Dmem_data};
+//     end
+    logic [`XLEN-1:0]       Icache2mem_addr; // goes to mem module, imem part
+    BUS_COMMAND             Icache2mem_command;
+    // assign proc2mem_command = (proc2Dmem_command == BUS_NONE) ? Icache2mem_command : proc2Dmem_command;//todo
+    // assign proc2mem_addr    = (proc2Dmem_command == BUS_NONE) ? Icache2mem_addr : proc2Dmem_addr;
+    // assign proc2mem_data    =  proc2Dmem_data;
+    assign proc2mem_command = Icache2mem_command;
+    assign proc2mem_addr    = Icache2mem_addr;
+    assign proc2mem_data    =  proc2Dmem_data;
 
     /////////////////////////////////////////////////////////////////////////
     //                                                                     //
@@ -120,33 +113,121 @@ module pipeline (
     //  Description :  Normal icache provided by 4824                      //
     //                                                                     //
     /////////////////////////////////////////////////////////////////////////
+    logic mem2Icache_ack;
+    //assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command) && (!proc2Dmem_command);//todo
+    assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command);
+    // && (!proc2Dmem_command);
+    IF_ICACHE_PACKET IF_Icache_packet;
+    ICACHE_IF_PACKET Icache_IF_packet;
+
     icache u_icache(
-        .clock(clock),
-        .reset(reset),
+        //system signal
+        .clock                  (clock),
+        .reset                  (reset),
 
-    // From memory
-        .Imem2proc_response(mem2proc_response), // zero = no response, others = response, used for compare tag
-        .Imem2proc_data(mem2proc_data),         // data from mem
-        .Imem2proc_tag(mem2proc_tag),           // tag == response -> got data from memory
+        // //From Retire
+        // .squash_en              (1'b0), //todo
 
-    // From fetch stage
-        .proc2Icache_addr(),                    // addr request
-        // .proc2Ocacje_req(),                  // Normally we should have
+        //From MEM
+        .Imem2proc_response     (mem2proc_response),  // from mem, note the "I"
+        .Imem2proc_data         (mem2proc_data),      // from mem
+        .Imem2proc_tag          (mem2proc_tag),       // from mem
 
-    // To memory
-        .proc2Imem_command(proc2Imem_command),  // None, Load
-        .proc2Imem_addr(proc2Imem_addr)         // addr,
-
-    // To fetch stage
-        .Icache_data_out(),                     //data
-        .Icache_valid_out()                     //valid_out, also stands for hit, but normally I guess hit is seperate
+        //From FETCH
+        .proc2Icache_addr       (IF_Icache_packet.Icache_addr_in),   //addr, request
+        //To Fetch
+        .Icache_data_out        (Icache_IF_packet.Icache_data_out),   //data, hit, valid
+        .Icache_valid_out       (Icache_IF_packet.Icache_valid_out),   //data, hit, valid
+        //To MEM
+        .proc2Imem_command      (Icache2mem_command),  // output to mem
+        .proc2Imem_addr         (Icache2mem_addr)      // output to mem
     );
 
-//////////////////////////////////////////////////
-//                                              //
-//                  IF-Stage                    //
-//                                              //
-//////////////////////////////////////////////////
+    // icache u_icache(
+    //     //system signal
+    //     .clock                  (clock),
+    //     .reset                  (reset),
+
+    //     //From Retire
+    //     .squash_en              (1'b0), //todo
+
+    //     //From MEM
+    //     .mem2Icache_response_in (mem2proc_response),  // from mem, note the "I"
+    //     .mem2Icache_data_in     (mem2proc_data),      // from mem
+    //     .mem2Icache_tag_in      (mem2proc_tag),       // from mem
+
+
+    //     .mem2Icache_ack_in      (mem2Icache_ack),
+
+    //     //From FETCH
+    //     .IF_Icache_packet_in    (IF_Icache_packet),   //addr, request
+    //     //To Fetch
+    //     .Icache_IF_packet_out   (Icache_IF_packet),   //data, hit, valid
+
+    //     //To MEM
+    //     .Icache2mem_command_out (Icache2mem_command),  // output to mem
+    //     .Icache2mem_addr_out    (Icache2mem_addr)      // output to mem
+    // );
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //                  IF-Stage                    //
+    //                                              //
+    //////////////////////////////////////////////////
+    IF_IB_PACKET if_ib_packet_out;
+    stage_if u_stage_if (
+        // Inputs
+        .clock                  (clock),
+        .reset                  (reset),
+
+        .if_valid               (1'b1),
+
+        .take_branch            (1'b0),
+        .branch_target          (0),
+
+        //To Icache
+        .IF_Icache_packet       (IF_Icache_packet),
+        //From Icache
+        .Icache_IF_packet       (Icache_IF_packet),
+
+
+        .if_ib_packet_out       (if_ib_packet_out)
+    );
+
+
+
+
+
+    /////////////////////////////////////////////////////////////////////////
+    //                                                                     //
+    //  Instance Name :  u_dcache                                          //
+    //                                                                     //
+    //  Description :  Normal dcache provided by 4824                      //
+    //                                                                     //
+    /////////////////////////////////////////////////////////////////////////
+    // dcache u_dcache(
+    //     .clock                  (clock), 
+    //     .reset                  (reset),
+
+    //     //from LSQ
+    //     .lsq2dcache_packet      (lsq2dcache_packet),
+
+    //     //from MEMORY
+    //     .Dmem2proc_response     (mem2proc_response),
+    //     .Dmem2proc_data         (mem2proc_data),
+    //     .Dmem2proc_tag          (mem2proc_tag),
+
+    //     //to LSQ (and ROB)
+    //     .dcache2lsq_packet      (dcache2lsq_packet),
+
+    //     //to testbench and cache set
+    //     .cache_data             (dcache_data),
+
+    //     //to MEMORY
+    //     .proc2Dmem_addr         (proc2Dmem_addr),
+    //     .proc2Dmem_data         (proc2Dmem_data),
+    //     .proc2Dmem_command      (proc2Dmem_command)
+    // );
 
 
     //////////////////////////////////////////////////
@@ -155,14 +236,14 @@ module pipeline (
     //                                              //
     //////////////////////////////////////////////////
 
-    assign pipeline_completed_insts = {3'b0, mem_wb_reg.valid}; // commit one valid instruction
-    assign pipeline_error_status = mem_wb_reg.illegal        ? ILLEGAL_INST :
-                                   mem_wb_reg.halt           ? HALTED_ON_WFI :
-                                   (mem2proc_response==4'h0) ? LOAD_ACCESS_FAULT : NO_ERROR;
+    // assign pipeline_completed_insts = {3'b0, mem_wb_reg.valid}; // commit one valid instruction
+    // assign pipeline_error_status = mem_wb_reg.illegal        ? ILLEGAL_INST :
+    //                                mem_wb_reg.halt           ? HALTED_ON_WFI :
+    //                                (mem2proc_response==4'h0) ? LOAD_ACCESS_FAULT : NO_ERROR;
 
-    assign pipeline_commit_wr_en   = wb_regfile_en;
-    assign pipeline_commit_wr_idx  = wb_regfile_idx;
-    assign pipeline_commit_wr_data = wb_regfile_data;
-    assign pipeline_commit_NPC     = mem_wb_reg.NPC;
+    // assign pipeline_commit_wr_en   = wb_regfile_en;
+    // assign pipeline_commit_wr_idx  = wb_regfile_idx;
+    // assign pipeline_commit_wr_data = wb_regfile_data;
+    // assign pipeline_commit_NPC     = mem_wb_reg.NPC;
 
 endmodule // pipeline

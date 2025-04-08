@@ -98,7 +98,7 @@
 # there should be no need to change anything for project 3
 
 # this is a global clock period variable used in the tcl script and referenced in testbenches
-export CLOCK_PERIOD = 1000.0
+export CLOCK_PERIOD = 10.0
 
 # Path variables
 export RISCV32_HOME = /homes/user/fac/tk3070/tmp/riscv-gcc/riscv-32/bin
@@ -324,19 +324,12 @@ TESTBENCH = test/pipeline_test.sv \
             test/mem.sv
 
 # you could simplify this line with $(wildcard verilog/*.sv) - but the manual way is more explicit
-# SOURCES = verilog/pipeline.sv \
-#           verilog/regfile.sv \
-#           verilog/icache.sv \
-#           verilog/mult.sv \
-#           verilog/mult_stage.sv \
-
-SOURCES = verilog/p3/pipeline.sv \
-          verilog/p3/regfile.sv \
-          verilog/p3/stage_if.sv \
-          verilog/p3/stage_id.sv \
-          verilog/p3/stage_ex.sv \
-          verilog/p3/stage_mem.sv \
-          verilog/p3/stage_wb.sv
+SOURCES = verilog/pipeline.sv \
+          verilog/regfile.sv \
+		  verilog/stage_if.sv \
+          verilog/icache.sv \
+        #   verilog/mult.sv \
+        #   verilog/mult_stage.sv \
 
 SYNTH_FILES = synth/pipeline.vg
 
@@ -344,7 +337,7 @@ SYNTH_FILES = synth/pipeline.vg
 simv: $(TESTBENCH) $(SOURCES) $(HEADERS)
 	@$(call PRINT_COLOR, 5, compiling the simulation executable $@)
 	@$(call PRINT_COLOR, 3, NOTE: if this is slow to startup: run '"module load vcs verdi synopsys-synth"')
-	$(VCS) $(filter-out $(HEADERS),$^) -o $@
+	$(VCS) -lca $(filter-out $(HEADERS),$^) -o $@
 	@$(call PRINT_COLOR, 6, finished compiling $@)
 
 # NOTE: this has been changed to avoid conflicting with the module %.vg rule
