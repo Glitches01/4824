@@ -338,12 +338,12 @@ typedef struct packed {
 
 
 /**
- * IF_DP_PACKET:
+ * IF_IB_PACKET:
  * Data from if to dp
  */
 typedef struct packed {
-	logic valid; // If low, the data in this struct is garbage
-    INST  [1:0] inst;  // fetched instruction out
+	logic             valid; // If low, the data in this struct is garbage
+    INST  [1:0]       inst;  // fetched instruction out
 	logic [`XLEN-1:0] NPC; // PC + 4
 	logic [`XLEN-1:0] PC;  // PC 
 } IF_IB_PACKET;
@@ -353,11 +353,11 @@ typedef struct packed {
  * Data exchanged from the IF to the ID stage
  */
 typedef struct packed {
-    INST              inst;
+    INST  [1:0]       inst; 
     logic [`XLEN-1:0] PC;
     logic [`XLEN-1:0] NPC; // PC + 4
     logic             valid;
-} IF_ID_PACKET;
+} IB_ID_PACKET;
 
 /**
  * ID_EX Packet:

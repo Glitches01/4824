@@ -174,7 +174,7 @@ module pipeline (
     //                  IF-Stage                    //
     //                                              //
     //////////////////////////////////////////////////
-    IF_IB_PACKET if_ib_packet_out;
+    IF_IB_PACKET if_ib_packet;
     stage_if u_stage_if (
         // Inputs
         .clock                  (clock),
@@ -191,11 +191,40 @@ module pipeline (
         .Icache_IF_packet       (Icache_IF_packet),
 
 
-        .if_ib_packet_out       (if_ib_packet_out)
+        .if_ib_packet           (if_ib_packet)
     );
 
+    //////////////////////////////////////////////////
+    //                                              //
+    //                  IB                          //
+    //                                              //
+    //////////////////////////////////////////////////
+    IB_ID_PACKET ib_id_packet;
+    logic squash = 1'b0;//todo
+    inst_buffer u_inst_buffer(
+        .clock                  (clock),
+        .reset                  (reset),
 
+        .squash                 (squash),
 
+        .if_ib_packet           (if_ib_packet),
+        .ib_id_packet           (ib_id_packet)
+    );
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //                  ID                          //
+    //                                              //
+    //////////////////////////////////////////////////
+    
+    Stage_ID u_Stage_ID(
+        .clock(clock),
+        .reset(reset),
+
+        .ib_id_packet(ib_id_packet),
+
+        .rs(rs)
+    );
 
 
     /////////////////////////////////////////////////////////////////////////

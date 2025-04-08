@@ -26,7 +26,7 @@ module stage_if (
 	output IF_ICACHE_PACKET         IF_Icache_packet,
 
 	//To Instruction Buffer
-	output IF_IB_PACKET             if_ib_packet_out
+	output IF_IB_PACKET             if_ib_packet
 );
 
 
@@ -59,11 +59,11 @@ module stage_if (
 	//	To Inst Buffer
 	//////////////////////////////////////////////////////
     always_comb begin
-        if_ib_packet_out.valid      = Icache_IF_packet.Icache_valid_out;
-        if_ib_packet_out.inst[0]    = Icache_IF_packet.Icache_data_out[31:0];
-        if_ib_packet_out.inst[1]    = Icache_IF_packet.Icache_data_out[63:32];
-        if_ib_packet_out.NPC        = PC_reg;
-        if_ib_packet_out.PC         = NPC_reg;
+        if_ib_packet.valid      = Icache_IF_packet.Icache_valid_out;
+        if_ib_packet.inst[0]    = Icache_IF_packet.Icache_data_out[31:0];
+        if_ib_packet.inst[1]    = Icache_IF_packet.Icache_data_out[63:32];
+        if_ib_packet.NPC        = PC_reg;
+        if_ib_packet.PC         = NPC_reg;
     end
 
 endmodule // stage_if

@@ -10,10 +10,10 @@ module Stage_ID (
     input reset,
 
     //From Retirement Units
-    input RT_PACKET rt_packet,
+    input  RT_PACKET rt_packet,
 
-    //From Fetch
-    input IF_ID_PACKET if_id_reg,
+    //From Inst Buffer
+    input  IF_ID_PACKET if_id_reg,
     
     ///////////////////////////////////////////////////////////////////////////////////////
     //      From LSA, RS, RoB to determine the dp_packets that could be sent in this cycle
