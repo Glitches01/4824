@@ -343,21 +343,95 @@ typedef struct packed {
  */
 typedef struct packed {
 	logic             valid; // If low, the data in this struct is garbage
-    INST  [1:0]       inst;  // fetched instruction out
+    INST              inst;  // fetched instruction out
 	logic [`XLEN-1:0] NPC; // PC + 4
 	logic [`XLEN-1:0] PC;  // PC 
 } IF_IB_PACKET;
 
 /**
- * IF_ID Packet:
+ * IB_ID Packet:
  * Data exchanged from the IF to the ID stage
  */
+
+ typedef struct packed {
+	logic             valid; // If low, the data in this struct is garbage
+    INST              inst;  // fetched instruction out
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
+} IB_ID_PACKET;
+
+
+
+/**
+ * DP_RS Packet:
+ * Data exchanged from the ID to the EX stage
+ */
 typedef struct packed {
-    INST  [1:0]       inst; 
+    INST              inst;
     logic [`XLEN-1:0] PC;
     logic [`XLEN-1:0] NPC; // PC + 4
-    logic             valid;
-} IB_ID_PACKET;
+
+    logic [`XLEN-1:0] rs1_value; // reg A value
+    logic [`XLEN-1:0] rs2_value; // reg B value
+
+    ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+
+    logic [4:0] dest_reg_idx;  // destination (writeback) register index
+    ALU_FUNC    alu_func;      // ALU function select (ALU_xxx *)
+    logic       rd_mem;        // Does inst read memory?
+    logic       wr_mem;        // Does inst write memory?
+    logic       cond_branch;   // Is inst a conditional branch?
+    logic       uncond_branch; // Is inst an unconditional branch?
+    logic       halt;          // Is this a halt?
+    logic       illegal;       // Is this instruction illegal?
+    logic       csr_op;        // Is this a CSR operation? (we use this to get return code)
+
+    logic       valid;
+} DP_RS_PACKET;
+
+`define ROB_SIZE 32
+ typedef struct packed {
+	logic                           valid; // If low, the data in this struct is garbage
+    logic [$clog2(`ROB_SIZE)-1:0]    rob_entry;//4:0
+} MAPTABLE;
+
+
+typedef enum logic [1:0] {
+	FUNC_NOP    = 2'h0,    // no instruction free, DO NOT USE THIS AS DEFAULT CASE!
+	FUNC_ALU    = 2'h1,    // all of the instruction  except mult and load and store
+	FUNC_MULT   = 2'h2,    // mult 
+	FUNC_MEM    = 2'h3    // load and store
+} FUNC_UNIT;
+
+typedef struct packed {
+    INST inst;                 // instruction
+	logic [`XLEN-1:0] NPC;     // PC + 4
+	logic [`XLEN-1:0] PC;      // PC                                 
+
+    logic busy;
+    logic [$clog2(`ROB_SIZE)-1:0] Tag; 
+    logic [$clog2(`ROB_SIZE)-1:0] rs1_tag;
+    logic [$clog2(`ROB_SIZE)-1:0] rs2_tag;
+	logic [`XLEN-1:0] rs1_value;    // reg A value                                  
+	logic [`XLEN-1:0] rs2_value;    // reg B value   
+
+	ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+	ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+	
+	logic [4:0] dest_reg_idx;  // destination (writeback) register index      
+	ALU_FUNC    alu_func;      // ALU function select (ALU_xxx *)
+	logic       rd_mem;        // does inst read memory?
+	logic       wr_mem;        // does inst write memory?
+	logic       cond_branch;   // is inst a conditional branch?
+	logic       uncond_branch; // is inst an unconditional branch?
+	logic       halt;          // is this a halt?
+	logic       illegal;       // is this instruction illegal?
+	logic       csr_op;        // is this a CSR operation? (we only used this as a cheap way to get return code)
+	logic       valid;         // is inst a valid instruction to be counted for CPI calculations?
+
+	FUNC_UNIT   func_unit;     // function unit
+} RS;
 
 /**
  * ID_EX Packet:

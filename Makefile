@@ -328,7 +328,8 @@ SOURCES = verilog/pipeline.sv \
           verilog/icache.sv \
 		  verilog/stage_if.sv \
 		  verilog/inst_buffer.sv \
-          verilog/regfile.sv \
+		  verilog/Dispatch.sv \
+		  verilog/ReservationStation.sv 
 
         #   verilog/mult.sv \
         #   verilog/mult_stage.sv \

@@ -174,7 +174,7 @@ module pipeline (
     //                  IF-Stage                    //
     //                                              //
     //////////////////////////////////////////////////
-    IF_IB_PACKET if_ib_packet;
+    IF_IB_PACKET if_ib_packet[0:1];
     stage_if u_stage_if (
         // Inputs
         .clock                  (clock),
@@ -199,7 +199,7 @@ module pipeline (
     //                  IB                          //
     //                                              //
     //////////////////////////////////////////////////
-    IB_ID_PACKET ib_id_packet;
+    IB_ID_PACKET ib_id_packet[0:1];
     logic squash = 1'b0;//todo
     inst_buffer u_inst_buffer(
         .clock                  (clock),
@@ -213,17 +213,31 @@ module pipeline (
 
     //////////////////////////////////////////////////
     //                                              //
-    //                  ID                          //
+    //                  Dispatch                    //
     //                                              //
     //////////////////////////////////////////////////
-    
-    Stage_ID u_Stage_ID(
+    DP_RS_PACKET dp_rs_packet[0:1];
+    Dispatch u_Dispatch(
         .clock(clock),
         .reset(reset),
 
         .ib_id_packet(ib_id_packet),
 
-        .rs(rs)
+        .dp_rs_packet(dp_rs_packet)
+    );
+
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //             Reservation Station              //
+    //                                              //
+    ////////////////////////////////////////////////// 
+
+    ReservationStation u_ReservationStation(
+        .clock(clock),
+        .reset(reset),
+
+        .dp_rs_packet(dp_rs_packet[0])
     );
 
 

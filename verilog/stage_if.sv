@@ -26,7 +26,7 @@ module stage_if (
 	output IF_ICACHE_PACKET         IF_Icache_packet,
 
 	//To Instruction Buffer
-	output IF_IB_PACKET             if_ib_packet
+	output IF_IB_PACKET             if_ib_packet[0:1]
 );
 
 
@@ -36,7 +36,7 @@ module stage_if (
     logic [`XLEN-1:0] PC_reg, NPC_reg; // PC we are currently fetching
     logic enable;
     assign NPC_reg = PC_reg + 8;
-    assign enable = Icache_IF_packet.Icache_valid_out;//todo could controls
+    assign enable = Icache_IF_packet.Icache_valid_out && if_valid;//todo could controls
 
     // synopsys sync_set_reset "reset"
     always_ff @(posedge clock) begin
@@ -59,11 +59,15 @@ module stage_if (
 	//	To Inst Buffer
 	//////////////////////////////////////////////////////
     always_comb begin
-        if_ib_packet.valid      = Icache_IF_packet.Icache_valid_out;
-        if_ib_packet.inst[0]    = Icache_IF_packet.Icache_data_out[31:0];
-        if_ib_packet.inst[1]    = Icache_IF_packet.Icache_data_out[63:32];
-        if_ib_packet.NPC        = PC_reg;
-        if_ib_packet.PC         = NPC_reg;
+        if_ib_packet[0].valid      = Icache_IF_packet.Icache_valid_out;
+        if_ib_packet[0].inst       = Icache_IF_packet.Icache_data_out[31:0];
+        if_ib_packet[0].NPC        = PC_reg + 4;
+        if_ib_packet[0].PC         = PC_reg;
+
+        if_ib_packet[1].valid      = Icache_IF_packet.Icache_valid_out;
+        if_ib_packet[1].inst       = Icache_IF_packet.Icache_data_out[63:32];
+        if_ib_packet[1].NPC        = NPC_reg;
+        if_ib_packet[1].PC         = PC_reg + 4;
     end
 
 endmodule // stage_if
