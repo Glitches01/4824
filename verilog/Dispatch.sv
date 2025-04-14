@@ -9,11 +9,15 @@ module Dispatch (
     input clock,
     input reset,
 
+    input enable,//todo for update maptable
+
     //From rob Units
     //input  ROB_REGFILE_PACKET rob_regfile_packet,
 
     //From Inst Buffer
-    input  IB_ID_PACKET ib_id_packet[0:1],
+    input  IB_ID_PACKET ib_id_packet,
+
+    input ROB_MT_PACKET rob_mt_packet,
     //output ID_IB_PACKET id_ib_packet,
     
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -27,7 +31,15 @@ module Dispatch (
     //From RS
     //input  RS_DP_PACKET rs_dp_packet,
     //To RS
-    output DP_RS_PACKET dp_rs_packet[0:1]
+    output DP_RS_PACKET  dp_rs_packet,
+
+    output DP_ROB_PACKET dp_rob_packet,
+
+    output MT_ROB_PACKET mt_rob_packet,
+
+    input logic             wb_regfile_en,  // register write enable
+    input logic [4:0]       wb_regfile_idx, // register write index
+    input logic [`XLEN-1:0] wb_regfile_data // register write data
 
 );
 
@@ -41,71 +53,52 @@ module Dispatch (
 //                  precise state regfiles and read it into id_packet  //
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
+    regfile u_regfile(
+        .clock          (clock)     ,
+        .reset          (reset),
+        .read_idx_1     (ib_id_packet.inst.r.rs1),
+        .read_idx_2     (ib_id_packet.inst.r.rs2),
+        .write_idx      (wb_regfile_idx) ,
+        .write_en       (wb_regfile_en)  ,
+        .write_data     (wb_regfile_data),
+        .read_out_1     (dp_rs_packet.rs1_value),
+        .read_out_2     (dp_rs_packet.rs2_value)
+    );
+
     // regfile u_regfile(
-    //     .clock          (clock)     ,
+    //     .wr_clk         (clock),
     //     .reset          (reset),
-    //     .read_idx_1     (ib_id_packet[0].inst.r.rs1),
-    //     .read_idx_2     (ib_id_packet[0].inst.r.rs2),
-    //     .write_idx      (0) ,
-    //     .write_en       (1'b0)  ,
-    //     .write_data     (0),
-    //     .read_out_1     (dp_rs_packet[0].rs1_value),
-    //     .read_out_2     (dp_rs_packet[0].rs2_value)
+
+    //     .rda_idx        ({ib_id_packet[1].inst.r.rs1, ib_id_packet[0].inst.r.rs1}),
+    //     .rdb_idx        ({ib_id_packet[1].inst.r.rs2, ib_id_packet[0].inst.r.rs2}),
+    //     .rda_out        ({dp_rs_packet[1].rs1_value,  dp_rs_packet[0].rs1_value}),
+    //     .rdb_out        ({dp_rs_packet[1].rs2_value,  dp_rs_packet[0].rs2_value}),
+
+    //     .wr_en          (2'b0),
+    //     .wr_idx         (8'b0),
+    //     .wr_data        (64'b0)
     // );
 
-    regfile u_regfile(
-        .wr_clk         (clock),
-        .reset          (reset),
-
-        .rda_idx        ({ib_id_packet[1].inst.r.rs1, ib_id_packet[0].inst.r.rs1}),
-        .rdb_idx        ({ib_id_packet[1].inst.r.rs2, ib_id_packet[0].inst.r.rs2}),
-        .rda_out        ({dp_rs_packet[1].rs1_value,  dp_rs_packet[0].rs1_value}),
-        .rdb_out        ({dp_rs_packet[1].rs2_value,  dp_rs_packet[0].rs2_value}),
-
-        .wr_en          (2'b0),
-        .wr_idx         (8'b0),
-        .wr_data        (64'b0)
-    );
-
-    logic has_dest_reg[0:1];
+    logic has_dest_reg;
     decoder u_decoder0 (
         // Inputs
-        .inst  (ib_id_packet[0].inst),
-        .valid (ib_id_packet[0].valid),
+        .inst  (ib_id_packet.inst),
+        .valid (ib_id_packet.valid),
 
         // Outputs
-        .opa_select    (dp_rs_packet[0].opa_select),
-        .opb_select    (dp_rs_packet[0].opb_select),
-        .alu_func      (dp_rs_packet[0].alu_func),
-        .has_dest      (has_dest_reg[0]),
-        .rd_mem        (dp_rs_packet[0].rd_mem),
-        .wr_mem        (dp_rs_packet[0].wr_mem),
-        .cond_branch   (dp_rs_packet[0].cond_branch),
-        .uncond_branch (dp_rs_packet[0].uncond_branch),
-        .csr_op        (dp_rs_packet[0].csr_op),
-        .halt          (dp_rs_packet[0].halt),
-        .illegal       (dp_rs_packet[0].illegal)
+        .opa_select    (dp_rs_packet.opa_select),
+        .opb_select    (dp_rs_packet.opb_select),
+        .alu_func      (dp_rs_packet.alu_func),
+        .has_dest      (has_dest_reg),
+        .rd_mem        (dp_rs_packet.rd_mem),
+        .wr_mem        (dp_rs_packet.wr_mem),
+        .cond_branch   (dp_rs_packet.cond_branch),
+        .uncond_branch (dp_rs_packet.uncond_branch),
+        .csr_op        (dp_rs_packet.csr_op),
+        .halt          (dp_rs_packet.halt),
+        .illegal       (dp_rs_packet.illegal)
     );
 
-
-    decoder u_decoder1 (
-        // Inputs
-        .inst  (ib_id_packet[1].inst),
-        .valid (ib_id_packet[1].valid),
-
-        // Outputs
-        .opa_select    (dp_rs_packet[1].opa_select),
-        .opb_select    (dp_rs_packet[1].opb_select),
-        .alu_func      (dp_rs_packet[1].alu_func),
-        .has_dest      (has_dest_reg[1]),
-        .rd_mem        (dp_rs_packet[1].rd_mem),
-        .wr_mem        (dp_rs_packet[1].wr_mem),
-        .cond_branch   (dp_rs_packet[1].cond_branch),
-        .uncond_branch (dp_rs_packet[1].uncond_branch),
-        .csr_op        (dp_rs_packet[1].csr_op),
-        .halt          (dp_rs_packet[1].halt),
-        .illegal       (dp_rs_packet[1].illegal)
-    );
 
 /////////////////////////////////////////////////////////////////////////
 //                                                                     //
@@ -114,46 +107,54 @@ module Dispatch (
 //  Description :  Other Logic Bypassing                               //
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
-    assign dp_rs_packet[0].inst = ib_id_packet[0].inst;
-    assign dp_rs_packet[0].PC   = ib_id_packet[0].PC;
-    assign dp_rs_packet[0].NPC  = ib_id_packet[0].NPC;
+    assign dp_rs_packet.inst = ib_id_packet.inst;
+    assign dp_rs_packet.PC   = ib_id_packet.PC;
+    assign dp_rs_packet.NPC  = ib_id_packet.NPC;
 
     // For counting valid instructions executed
     // and making the fetch stage die on halts/keeping track of when
     // to allow the next instruction out of fetch
     // 0 for HALT and illegal instructions (end processor on halt)
-    assign dp_rs_packet[0].valid = ib_id_packet[0].valid & ~dp_rs_packet[0].illegal;
-    assign dp_rs_packet[0].dest_reg_idx = (has_dest_reg[0]) ? ib_id_packet[0].inst.r.rd : `ZERO_REG;
+    assign dp_rs_packet.valid = ib_id_packet.valid & ~dp_rs_packet.illegal;
+    assign dp_rs_packet.dest_reg_idx = (has_dest_reg) ? ib_id_packet.inst.r.rd : `ZERO_REG;
+    assign dp_rs_packet.mem = |{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem};
 
 
-    assign dp_rs_packet[1].inst = ib_id_packet[1].inst;
-    assign dp_rs_packet[1].PC   = ib_id_packet[1].PC;
-    assign dp_rs_packet[1].NPC  = ib_id_packet[1].NPC;
 
-    // For counting valid instructions executed
-    // and making the fetch stage die on halts/keeping track of when
-    // to allow the next instruction out of fetch
-    // 0 for HALT and illegal instructions (end processor on halt)
-    assign dp_rs_packet[1].valid = ib_id_packet[1].valid & ~dp_rs_packet[1].illegal;
-    assign dp_rs_packet[1].dest_reg_idx = (has_dest_reg[1]) ? ib_id_packet[1].inst.r.rd : `ZERO_REG;
-
+/////////////////////////////////////////////////////////////////////////
+//                                                                     //
+//  Instance Name :  For ROB                                           //
+//                                                                     //
+//                                                                     //
+/////////////////////////////////////////////////////////////////////////
+    assign dp_rob_packet.dest_reg_idx   = dp_rs_packet.dest_reg_idx;
+    assign dp_rob_packet.PC             = dp_rs_packet.PC;
 
     MAPTABLE rob_entry1;
     MAPTABLE rob_entry2;
+    assign mt_rob_packet.RegS1_Tag = rob_entry1.rob_entry;
+    assign mt_rob_packet.RegS2_Tag = rob_entry2.rob_entry;
+    assign mt_rob_packet.valid_vector = {rob_entry1.valid, rob_entry2.valid};
+
+    logic [4:0] mt_read_idx_1, mt_read_idx_2;
+    assign mt_read_idx_1 = (dp_rs_packet.opa_select == 2'h0)? ib_id_packet.inst.r.rs1:5'h0;
+    assign mt_read_idx_2 = (dp_rs_packet.opb_select == 4'h0)? ib_id_packet.inst.r.rs2:5'h0;
     MapTable u_MapTable(
-        .clock(clock),
-        .reset(reset),
+        .clock              (clock),
+        .reset              (reset),
 
-        .read_idx_1(ib_id_packet[0].inst.r.rs1),
-        .read_idx_2(ib_id_packet[0].inst.r.rs2),
+        .enable             (enable),
 
-        .rob_entry1(rob_entry1),
-        .rob_entry2(rob_entry2),
+        .read_idx_1         (mt_read_idx_1),
+        .read_idx_2         (mt_read_idx_2),
 
-        .has_dest_reg(has_dest_reg[0]),
-        .dest_reg_idx(dp_rs_packet[0].dest_reg_idx),
+        .rob_entry1         (rob_entry1),
+        .rob_entry2         (rob_entry2),
 
-        .rob_tail(1'd1)
+        .has_dest_reg       (has_dest_reg),
+        .dest_reg_idx       (dp_rs_packet.dest_reg_idx),
+
+        .rob_tail           (rob_mt_packet.Tag)
     );
     
 endmodule
@@ -165,6 +166,8 @@ module MapTable #(
     input clock,
     input reset,
 
+    input enable,//todo
+
     input [4:0] read_idx_1,
     input [4:0] read_idx_2,
 
@@ -174,14 +177,12 @@ module MapTable #(
     input       has_dest_reg,
     input [4:0] dest_reg_idx,
 
-    input rob_tail
+    input  [$clog2(`ROB_SIZE)-1:0] rob_tail
 );
     MAPTABLE maptable[0:31];
     assign rob_entry1 = maptable[read_idx_1];
     assign rob_entry2 = maptable[read_idx_2];
 
-    logic enable;
-    assign enable = 1;//todo
     always_ff @(posedge clock) begin : blockName
         if(reset) begin
             for (integer i = 0; i < 32; i = i + 1) begin
@@ -194,21 +195,12 @@ module MapTable #(
     end
 
 
+
+
+
 endmodule
 
-// module ReOrderBuffer #(
-//     parameters
-// ) (
-//     input clock,
-//     input reset,
 
-//     input       has_dest_reg,
-//     input [4:0] dest_reg_idx,
-
-//     output ROB_REGFILE_PACKET rob_regfile_packet
-// );
-    
-// endmodule
 
 
 
@@ -419,121 +411,111 @@ endmodule // decoder
 
 
 
-/////////////////////////////////////////////////////////////////////////
-//                                                                     //
-//   Modulename :  regfile.v                                           //
-//                                                                     //
-//  Description :  This module creates the Regfile used by the ID and  // 
-//                 WB Stages of the Pipeline. (2-way)                  //
-//                                                                     //
-/////////////////////////////////////////////////////////////////////////
 
+// module regfile (
+//     // inputs
+//     input [1:0][4:0]        rda_idx, rdb_idx, wr_idx, // read/write index, n-way
+//     input [1:0][`XLEN-1:0]  wr_data, // write data
+//     input [1:0]             wr_en,
+//     input                   wr_clk,
+//     input                   reset,
+
+//     // outputs
+//     output logic [1:0][`XLEN-1:0] rda_out, rdb_out // read data
+// );
+//     logic [31:0] [`XLEN-1:0] registers; // 32, 32-bit Registers
+//     logic [4:0] true_wr_idx_0;
+//     assign true_wr_idx_0 = (wr_idx[0] == wr_idx[1]) ? `ZERO_REG : wr_idx[0];
+//     // first write might be overwritten by the second
+
+//     always_comb begin
+//         for (int i = 0; i < 2; i++) begin
+//             if (rda_idx[i] == `ZERO_REG) begin
+//                 rda_out[i] = 0;
+//             end else if (wr_en[1] && (rda_idx[i] == wr_idx[1])) begin
+//                 rda_out[i] = wr_data[1];
+//             end else if (wr_en[0] && (rda_idx[i] == wr_idx[0])) begin
+//                 rda_out[i] = wr_data[0];
+//             end else begin
+//                 rda_out[i] = registers[rda_idx[i]];
+//             end
+            
+//             if (rdb_idx[i] == `ZERO_REG) begin
+//                 rdb_out[i] = 0;
+//             end else if (wr_en[1] && (rdb_idx[i] == wr_idx[1])) begin
+//                 rdb_out[i] = wr_data[1];
+//             end else if (wr_en[0] && (rdb_idx[i] == wr_idx[0])) begin
+//                 rdb_out[i] = wr_data[0];
+//             end else begin
+//                 rdb_out[i] = registers[rdb_idx[i]];
+//             end
+//         end
+//     end
+
+
+//     //
+//     // Write ports
+//     //
+//     always_ff @(posedge wr_clk) begin
+//         if (reset) begin//todo
+//             for (integer i = 0; i < 32; i = i + 1) begin
+//                 registers[i] <= 32'h0;
+//             end
+//         end else if (wr_en[0]  && (true_wr_idx_0 != `ZERO_REG)) begin
+//             registers[true_wr_idx_0] <= `SD wr_data[0];
+//         end
+//         if (wr_en[1]  && (wr_idx != `ZERO_REG)) begin
+//             registers[wr_idx[1]] <= `SD wr_data[1];
+//         end
+//     end
+// endmodule // regfile
 
 
 module regfile (
-    // inputs
-    input [1:0][4:0]        rda_idx, rdb_idx, wr_idx, // read/write index, n-way
-    input [1:0][`XLEN-1:0]  wr_data, // write data
-    input [1:0]             wr_en,
-    input                   wr_clk,
-    input                   reset,
+    input             clock, // system clock
+    input             reset,
+    // note: no system reset, register values must be written before they can be read
+    input [4:0]       read_idx_1, read_idx_2, write_idx,
+    input             write_en,
+    input [`XLEN-1:0] write_data,
 
-    // outputs
-    output logic [1:0][`XLEN-1:0] rda_out, rdb_out // read data
+    output logic [`XLEN-1:0] read_out_1, read_out_2
 );
-    logic [31:0] [`XLEN-1:0] registers; // 32, 32-bit Registers
-    logic [4:0] true_wr_idx_0;
-    assign true_wr_idx_0 = (wr_idx[0] == wr_idx[1]) ? `ZERO_REG : wr_idx[0];
-    // first write might be overwritten by the second
 
+    logic [31:1] [`XLEN-1:0] registers; // 31 XLEN-length Registers (0 is known)
+
+    // Read port 1
     always_comb begin
-        for (int i = 0; i < 2; i++) begin
-            if (rda_idx[i] == `ZERO_REG) begin
-                rda_out[i] = 0;
-            end else if (wr_en[1] && (rda_idx[i] == wr_idx[1])) begin
-                rda_out[i] = wr_data[1];
-            end else if (wr_en[0] && (rda_idx[i] == wr_idx[0])) begin
-                rda_out[i] = wr_data[0];
-            end else begin
-                rda_out[i] = registers[rda_idx[i]];
-            end
-            
-            if (rdb_idx[i] == `ZERO_REG) begin
-                rdb_out[i] = 0;
-            end else if (wr_en[1] && (rdb_idx[i] == wr_idx[1])) begin
-                rdb_out[i] = wr_data[1];
-            end else if (wr_en[0] && (rdb_idx[i] == wr_idx[0])) begin
-                rdb_out[i] = wr_data[0];
-            end else begin
-                rdb_out[i] = registers[rdb_idx[i]];
-            end
+        if (read_idx_1 == `ZERO_REG) begin
+            read_out_1 = 0;
+        end else if (write_en && (write_idx == read_idx_1)) begin
+            read_out_1 = write_data; // internal forwarding
+        end else begin
+            read_out_1 = registers[read_idx_1];
         end
     end
 
+    // Read port 2
+    always_comb begin
+        if (read_idx_2 == `ZERO_REG) begin
+            read_out_2 = 0;
+        end else if (write_en && (write_idx == read_idx_2)) begin
+            read_out_2 = write_data; // internal forwarding
+        end else begin
+            read_out_2 = registers[read_idx_2];
+        end
+    end
 
-    //
-    // Write ports
-    //
-    always_ff @(posedge wr_clk) begin
-        if (reset) begin//todo
+    // Write port
+    always_ff @(posedge clock) begin
+        if(reset) begin
             for (integer i = 0; i < 32; i = i + 1) begin
-                registers[i] <= 32'h0;
+                registers[i] <= 32'hdeadface;
             end
-        end else if (wr_en[0]  && (true_wr_idx_0 != `ZERO_REG)) begin
-            registers[true_wr_idx_0] <= `SD wr_data[0];
-        end
-        if (wr_en[1]  && (wr_idx != `ZERO_REG)) begin
-            registers[wr_idx[1]] <= `SD wr_data[1];
+        end else if (write_en && write_idx != `ZERO_REG) begin
+            registers[write_idx] <= write_data;
         end
     end
+
 endmodule // regfile
-
-
-// module regfile (
-//     input             clock, // system clock
-//     input             reset,
-//     // note: no system reset, register values must be written before they can be read
-//     input [4:0]       read_idx_1, read_idx_2, write_idx,
-//     input             write_en,
-//     input [`XLEN-1:0] write_data,
-
-//     output logic [`XLEN-1:0] read_out_1, read_out_2
-// );
-
-//     logic [31:1] [`XLEN-1:0] registers; // 31 XLEN-length Registers (0 is known)
-
-//     // Read port 1
-//     always_comb begin
-//         if (read_idx_1 == `ZERO_REG) begin
-//             read_out_1 = 0;
-//         end else if (write_en && (write_idx == read_idx_1)) begin
-//             read_out_1 = write_data; // internal forwarding
-//         end else begin
-//             read_out_1 = registers[read_idx_1];
-//         end
-//     end
-
-//     // Read port 2
-//     always_comb begin
-//         if (read_idx_2 == `ZERO_REG) begin
-//             read_out_2 = 0;
-//         end else if (write_en && (write_idx == read_idx_2)) begin
-//             read_out_2 = write_data; // internal forwarding
-//         end else begin
-//             read_out_2 = registers[read_idx_2];
-//         end
-//     end
-
-//     // Write port
-//     always_ff @(posedge clock) begin
-//         if(reset) begin
-//             for (integer i = 0; i < 32; i = i + 1) begin
-//                 registers[i] <= 32'hdeadface;
-//             end
-//         end else if (write_en && write_idx != `ZERO_REG) begin
-//             registers[write_idx] <= write_data;
-//         end
-//     end
-
-// endmodule // regfile
 

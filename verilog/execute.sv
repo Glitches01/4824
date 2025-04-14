@@ -89,7 +89,7 @@ module conditional_branch (
 endmodule // conditional_branch
 
 
-module stage_ex (
+module execute (
     input ID_EX_PACKET id_ex_reg,
 
     output EX_MEM_PACKET ex_packet

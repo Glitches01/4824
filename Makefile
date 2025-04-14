@@ -329,7 +329,10 @@ SOURCES = verilog/pipeline.sv \
 		  verilog/stage_if.sv \
 		  verilog/inst_buffer.sv \
 		  verilog/Dispatch.sv \
-		  verilog/ReservationStation.sv 
+		  verilog/ReservationStation.sv \
+		  verilog/execute.sv \
+		  verilog/complete.sv \
+		  verilog/ROB.sv
 
         #   verilog/mult.sv \
         #   verilog/mult_stage.sv \
@@ -577,7 +580,7 @@ vis_simv: $(HEADERS) $(VTUBER) $(SOURCES)
 # 'make clean' does not remove .mem or .dump files
 # clean_* commands remove certain groups of files
 
-clean: clean_exe clean_run_files
+clean: clean_exe clean_run_files clean_programs
 	@$(call PRINT_COLOR, 6, note: clean is split into multiple commands you can call separately: $^)
 
 # removes all extra synthesis files and the entire output directory

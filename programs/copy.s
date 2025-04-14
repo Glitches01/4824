@@ -20,7 +20,10 @@
     }
 */
     data = 0x1000
-    li	x6, 0
+    li	x6, 2
+    add x6, x6, x0
+    li  x7, 5
+    add x7, x6, x7
     li	x2, data
     li  x31, 0x0a
 loop:	mul	x3,	x6,	x31

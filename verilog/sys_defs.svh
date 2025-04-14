@@ -388,14 +388,65 @@ typedef struct packed {
     logic       csr_op;        // Is this a CSR operation? (we use this to get return code)
 
     logic       valid;
+    logic       mem;
 } DP_RS_PACKET;
 
 `define ROB_SIZE 32
  typedef struct packed {
-	logic                           valid; // If low, the data in this struct is garbage
+	logic                            valid; // If low, the data in this struct is garbage
     logic [$clog2(`ROB_SIZE)-1:0]    rob_entry;//4:0
 } MAPTABLE;
+typedef struct packed {
+    logic [4:0]         dest_reg_idx;  // destination (writeback) register index
+    logic [`XLEN-1:0]   PC;
+} DP_ROB_PACKET;
 
+
+
+
+typedef struct packed {
+	logic [4:0] 		reg_idx; 
+    logic [`XLEN-1:0]	value; // computing result from ex stage
+	logic 				cp_bit;    // If current insn is complete
+	logic				ep_bit;    // If current insn trigger exception
+	logic [`XLEN-1:0]	NPC;
+	logic [`XLEN-1:0]	PC;
+	logic             	halt, illegal; // forwarded
+	logic             	valid;    	// Used for CPI calculation
+    logic               wr_mem; 		// forwarded
+} ROB_ENTRY;
+`define ROB_ADDR_BITS $clog2(`ROB_SIZE)
+typedef struct packed {
+	ROB_ENTRY		  			rob_entry;
+	logic [`ROB_ADDR_BITS-1:0]  Tag;  // #ROB
+} CP_RT_PACKET;
+
+typedef struct packed {
+	logic [$clog2(`ROB_SIZE)-1:0] Tag; 
+    logic [`XLEN-1:0]             rs1_value, rs2_value;
+} ROB_RS_PACKET;
+
+typedef struct packed {
+	logic [$clog2(`ROB_SIZE)-1:0] Tag;  
+} ROB_MT_PACKET;
+
+typedef struct packed {
+	logic [$clog2(`ROB_SIZE)-1:0]  RegS1_Tag;
+	logic [$clog2(`ROB_SIZE)-1:0]  RegS2_Tag; 
+	logic [1:0]					   valid_vector; // not valid means no #ROB
+} MT_ROB_PACKET; //to ROB
+
+typedef struct packed {
+	logic [`XLEN-1:0] Value;  // alu_result
+	logic [`XLEN-1:0] NPC;         // pc + 4, forwarded
+	logic             take_branch; // is this a taken branch?, forwarded
+    INST              inst; 		// forwarded
+	logic [4:0]       dest_reg_idx; // forwarded
+	logic             halt, illegal; // forwarded
+	logic             done;
+	logic             valid;
+	logic [`ROB_ADDR_BITS-1:0]  Tag;  // #ROB
+} CDB_PACKET;
 
 typedef enum logic [1:0] {
 	FUNC_NOP    = 2'h0,    // no instruction free, DO NOT USE THIS AS DEFAULT CASE!
@@ -411,8 +462,8 @@ typedef struct packed {
 
     logic busy;
     logic [$clog2(`ROB_SIZE)-1:0] Tag; 
-    logic [$clog2(`ROB_SIZE)-1:0] rs1_tag;
-    logic [$clog2(`ROB_SIZE)-1:0] rs2_tag;
+    MAPTABLE rs1_tag;
+    MAPTABLE rs2_tag;
 	logic [`XLEN-1:0] rs1_value;    // reg A value                                  
 	logic [`XLEN-1:0] rs2_value;    // reg B value   
 
@@ -432,6 +483,33 @@ typedef struct packed {
 
 	FUNC_UNIT   func_unit;     // function unit
 } RS;
+
+
+typedef struct packed {
+    INST                inst;
+    logic [`XLEN-1:0]   PC;
+    logic [`XLEN-1:0]   NPC; // PC + 4
+
+    logic [`XLEN-1:0]   rs1_value; // reg A value
+    logic [`XLEN-1:0]   rs2_value; // reg B value
+
+    ALU_OPA_SELECT      opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT      opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+
+    logic [4:0]         dest_reg_idx;  // destination (writeback) register index
+    ALU_FUNC            alu_func;      // ALU function select (ALU_xxx *)
+    logic               rd_mem;        // Does inst read memory?
+    logic               wr_mem;        // Does inst write memory?
+    logic               cond_branch;   // Is inst a conditional branch?
+    logic               uncond_branch; // Is inst an unconditional branch?
+    logic               halt;          // Is this a halt?
+    logic               illegal;       // Is this instruction illegal?
+    logic               csr_op;        // Is this a CSR operation? (we use this to get return code)
+
+    logic               valid;
+
+    logic [$clog2(`ROB_SIZE)-1:0] Tag;//dest rob entry
+} RS_EX_PACKET;
 
 /**
  * ID_EX Packet:
@@ -459,6 +537,7 @@ typedef struct packed {
     logic       csr_op;        // Is this a CSR operation? (we use this to get return code)
 
     logic       valid;
+    logic [$clog2(`ROB_SIZE)-1:0] Tag;//dest rob entry
 } ID_EX_PACKET;
 
 /**

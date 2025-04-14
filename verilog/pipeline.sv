@@ -199,15 +199,24 @@ module pipeline (
     //                  IB                          //
     //                                              //
     //////////////////////////////////////////////////
-    IB_ID_PACKET ib_id_packet[0:1];
+    IB_ID_PACKET ib_id_packet;
+    logic busy[0:1];
     logic squash = 1'b0;//todo
+    logic read_enable, enable;//todo
+    logic available;//rob available
+    assign read_enable = available && 1 && (|{!busy[0],!busy[1]});
+    logic rs_mt_rob_enable;
     inst_buffer u_inst_buffer(
         .clock                  (clock),
         .reset                  (reset),
 
         .squash                 (squash),
+        .read_enable            (read_enable),//todo
+        //.ack                    (rs_mt_rob_enable),todo
 
         .if_ib_packet           (if_ib_packet),
+
+        .enable                 (enable),
         .ib_id_packet           (ib_id_packet)
     );
 
@@ -216,30 +225,107 @@ module pipeline (
     //                  Dispatch                    //
     //                                              //
     //////////////////////////////////////////////////
-    DP_RS_PACKET dp_rs_packet[0:1];
+    // logic             wb_regfile_en;  // register write enable
+    // logic [4:0]       wb_regfile_idx; // register write index
+    // logic [`XLEN-1:0] wb_regfile_data; // register write data
+
+    ROB_MT_PACKET rob_mt_packet;
+
+    DP_RS_PACKET  dp_rs_packet;
+    DP_ROB_PACKET dp_rob_packet;
+    MT_ROB_PACKET mt_rob_packet;
+    assign rs_mt_rob_enable = available && ((dp_rs_packet.mem && !busy[1]) || (!dp_rs_packet.mem && !busy[0])) && enable;
     Dispatch u_Dispatch(
-        .clock(clock),
-        .reset(reset),
+        .clock              (clock),
+        .reset              (reset),
 
-        .ib_id_packet(ib_id_packet),
+        .enable             (rs_mt_rob_enable),//todo
+        //input
+        .ib_id_packet       (ib_id_packet),
+        .rob_mt_packet      (rob_mt_packet),
+        //output
+        .dp_rs_packet       (dp_rs_packet),
+        .dp_rob_packet      (dp_rob_packet),
+        .mt_rob_packet      (mt_rob_packet),
 
-        .dp_rs_packet(dp_rs_packet)
+        .wb_regfile_en      (wb_regfile_en),  // register write enable
+        .wb_regfile_idx     (wb_regfile_idx), // register write index
+        .wb_regfile_data    (wb_regfile_data) // register write data
     );
 
+
+
+    CDB_PACKET              CDB_packet;      //todo
+    ROB_RS_PACKET   ROB_RS_packet;//todo
+    CP_RT_PACKET    cp_rt_packet;   //todo
+    ROB rob(
+        //Inputs
+        .reset              (reset),
+        .clock              (clock),
+
+        .squash_signal      (1'b0),    // squash signal in
+
+        .CDB_packet_in      (CDB_packet),    // from CDB//todo
+
+        .dp_rob_packet      (dp_rob_packet),    // From dispatch stage, decoded get 1. destreg 2. pc
+        .enable             (rs_mt_rob_enable),//todo
+        .mt_rob_packet      (mt_rob_packet),    // From Maptable
+
+
+
+        //Outputs
+        .available          (available),    // going to DP_stage
+        .CP_RT_packet_out   (cp_rt_packet),    // going to retire stage
+        .ROB_RS_packet_out  (ROB_RS_packet),  // going to RS
+        .rob_mt_packet      (rob_mt_packet)    // going to maptable
+    );
 
     //////////////////////////////////////////////////
     //                                              //
     //             Reservation Station              //
     //                                              //
     ////////////////////////////////////////////////// 
-
+    RS_EX_PACKET rs_ex_packet;
     ReservationStation u_ReservationStation(
         .clock(clock),
         .reset(reset),
 
-        .dp_rs_packet(dp_rs_packet[0])
+        .enable(rs_mt_rob_enable),
+        .dp_rs_packet(dp_rs_packet),
+
+        .rs_ex_packet(rs_ex_packet),
+        .busy(busy)
     );
 
+
+
+    EX_MEM_PACKET ex_packet;
+    EX_MEM_PACKET ex_reg;
+    execute u_execute(
+        .id_ex_reg (rs_ex_packet),
+        .ex_packet (ex_packet)
+    );
+
+    always_ff @( posedge clock ) begin
+        if (reset) begin
+            ex_reg <= 0;
+        end else begin
+            ex_reg <= ex_packet;
+        end
+    end
+
+    complete u_complete(
+        // .clock(clock),
+        // .reset(reset),
+
+        .ex_reg(ex_reg),
+        .wb_regfile_en(wb_regfile_en),  // register write enable
+        .wb_regfile_idx(wb_regfile_idx), // register write index
+        .wb_regfile_data(wb_regfile_data) // register write data
+
+        
+
+    );
 
     /////////////////////////////////////////////////////////////////////////
     //                                                                     //
