@@ -10,7 +10,7 @@ module inst_buffer #(
 
     input read_enable,
     input  IF_IB_PACKET     if_ib_packet[0:1],
-    // input ack,todo? do we need ack for controlling enable?
+    input ack,//todo? do we need ack for controlling enable?
 
     output IB_ID_PACKET     ib_id_packet,
     output logic enable
@@ -70,7 +70,8 @@ module inst_buffer #(
             read_phase <= 0;
             enable <= 1;
             r_ptr <= r_ptr + 1;
-        end else begin
+        end else if(ack) begin
+            r_data.valid <= 0;
             enable <= 0;
         end
     end

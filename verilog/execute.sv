@@ -90,39 +90,40 @@ endmodule // conditional_branch
 
 
 module execute (
-    input ID_EX_PACKET id_ex_reg,
+    input RS_EX_PACKET rs_ex_packet,
 
-    output EX_MEM_PACKET ex_packet
+    output EX_PACKET ex_packet
 );
 
     logic [`XLEN-1:0] opa_mux_out, opb_mux_out;
     logic take_conditional;
 
     // Pass-throughs
-    assign ex_packet.NPC          = id_ex_reg.NPC;
-    assign ex_packet.rs2_value    = id_ex_reg.rs2_value;
-    assign ex_packet.rd_mem       = id_ex_reg.rd_mem;
-    assign ex_packet.wr_mem       = id_ex_reg.wr_mem;
-    assign ex_packet.dest_reg_idx = id_ex_reg.dest_reg_idx;
-    assign ex_packet.halt         = id_ex_reg.halt;
-    assign ex_packet.illegal      = id_ex_reg.illegal;
-    assign ex_packet.csr_op       = id_ex_reg.csr_op;
-    assign ex_packet.valid        = id_ex_reg.valid;
+    assign ex_packet.NPC          = rs_ex_packet.NPC;
+    assign ex_packet.rs2_value    = rs_ex_packet.rs2_value;
+    assign ex_packet.rd_mem       = rs_ex_packet.rd_mem;
+    assign ex_packet.wr_mem       = rs_ex_packet.wr_mem;
+    assign ex_packet.dest_reg_idx = rs_ex_packet.dest_reg_idx;
+    assign ex_packet.halt         = rs_ex_packet.halt;
+    assign ex_packet.illegal      = rs_ex_packet.illegal;
+    assign ex_packet.csr_op       = rs_ex_packet.csr_op;
+    assign ex_packet.valid        = rs_ex_packet.valid;
+    assign ex_packet.Tag          = rs_ex_packet.Tag;
 
     // Break out the signed/unsigned bit and memory read/write size
-    assign ex_packet.rd_unsigned  = id_ex_reg.inst.r.funct3[2]; // 1 if unsigned, 0 if signed
-    assign ex_packet.mem_size     = MEM_SIZE'(id_ex_reg.inst.r.funct3[1:0]);
+    assign ex_packet.rd_unsigned  = rs_ex_packet.inst.r.funct3[2]; // 1 if unsigned, 0 if signed
+    assign ex_packet.mem_size     = MEM_SIZE'(rs_ex_packet.inst.r.funct3[1:0]);
 
     // ultimate "take branch" signal:
     // unconditional, or conditional and the condition is true
-    assign ex_packet.take_branch = id_ex_reg.uncond_branch || (id_ex_reg.cond_branch && take_conditional);
+    assign ex_packet.take_branch = rs_ex_packet.uncond_branch || (rs_ex_packet.cond_branch && take_conditional);
 
     // ALU opA mux
     always_comb begin
-        case (id_ex_reg.opa_select)
-            OPA_IS_RS1:  opa_mux_out = id_ex_reg.rs1_value;
-            OPA_IS_NPC:  opa_mux_out = id_ex_reg.NPC;
-            OPA_IS_PC:   opa_mux_out = id_ex_reg.PC;
+        case (rs_ex_packet.opa_select)
+            OPA_IS_RS1:  opa_mux_out = rs_ex_packet.rs1_value;
+            OPA_IS_NPC:  opa_mux_out = rs_ex_packet.NPC;
+            OPA_IS_PC:   opa_mux_out = rs_ex_packet.PC;
             OPA_IS_ZERO: opa_mux_out = 0;
             default:     opa_mux_out = `XLEN'hdeadface; // dead face
         endcase
@@ -130,13 +131,13 @@ module execute (
 
     // ALU opB mux
     always_comb begin
-        case (id_ex_reg.opb_select)
-            OPB_IS_RS2:   opb_mux_out = id_ex_reg.rs2_value;
-            OPB_IS_I_IMM: opb_mux_out = `RV32_signext_Iimm(id_ex_reg.inst);
-            OPB_IS_S_IMM: opb_mux_out = `RV32_signext_Simm(id_ex_reg.inst);
-            OPB_IS_B_IMM: opb_mux_out = `RV32_signext_Bimm(id_ex_reg.inst);
-            OPB_IS_U_IMM: opb_mux_out = `RV32_signext_Uimm(id_ex_reg.inst);
-            OPB_IS_J_IMM: opb_mux_out = `RV32_signext_Jimm(id_ex_reg.inst);
+        case (rs_ex_packet.opb_select)
+            OPB_IS_RS2:   opb_mux_out = rs_ex_packet.rs2_value;
+            OPB_IS_I_IMM: opb_mux_out = `RV32_signext_Iimm(rs_ex_packet.inst);
+            OPB_IS_S_IMM: opb_mux_out = `RV32_signext_Simm(rs_ex_packet.inst);
+            OPB_IS_B_IMM: opb_mux_out = `RV32_signext_Bimm(rs_ex_packet.inst);
+            OPB_IS_U_IMM: opb_mux_out = `RV32_signext_Uimm(rs_ex_packet.inst);
+            OPB_IS_J_IMM: opb_mux_out = `RV32_signext_Jimm(rs_ex_packet.inst);
             default:      opb_mux_out = `XLEN'hfacefeed; // face feed
         endcase
     end
@@ -146,7 +147,7 @@ module execute (
         // Inputs
         .opa(opa_mux_out),
         .opb(opb_mux_out),
-        .func(id_ex_reg.alu_func),
+        .func(rs_ex_packet.alu_func),
 
         // Output
         .result(ex_packet.alu_result)
@@ -155,9 +156,9 @@ module execute (
     // Instantiate the conditional branch module
     conditional_branch conditional_branch_0 (
         // Inputs
-        .func(id_ex_reg.inst.b.funct3), // instruction bits for which condition to check
-        .rs1(id_ex_reg.rs1_value),
-        .rs2(id_ex_reg.rs2_value),
+        .func(rs_ex_packet.inst.b.funct3), // instruction bits for which condition to check
+        .rs1(rs_ex_packet.rs1_value),
+        .rs2(rs_ex_packet.rs2_value),
 
         // Output
         .take(take_conditional)

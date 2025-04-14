@@ -422,8 +422,12 @@ typedef struct packed {
 } CP_RT_PACKET;
 
 typedef struct packed {
-	logic [$clog2(`ROB_SIZE)-1:0] Tag; 
-    logic [`XLEN-1:0]             rs1_value, rs2_value;
+	logic [$clog2(`ROB_SIZE)-1:0]  Tag; 
+    logic [`XLEN-1:0]              rs1_value, rs2_value;
+	logic [$clog2(`ROB_SIZE)-1:0]  RegS1_Tag;
+	logic [$clog2(`ROB_SIZE)-1:0]  RegS2_Tag; 
+	logic [1:0]					   valid_vector; // not valid means no #ROB
+    logic [1:0]                    complete;
 } ROB_RS_PACKET;
 
 typedef struct packed {
@@ -462,8 +466,8 @@ typedef struct packed {
 
     logic busy;
     logic [$clog2(`ROB_SIZE)-1:0] Tag; 
-    MAPTABLE rs1_tag;
-    MAPTABLE rs2_tag;
+	logic [$clog2(`ROB_SIZE)-1:0] RegS1_Tag;
+	logic [$clog2(`ROB_SIZE)-1:0] RegS2_Tag; 
 	logic [`XLEN-1:0] rs1_value;    // reg A value                                  
 	logic [`XLEN-1:0] rs2_value;    // reg B value   
 
@@ -482,6 +486,8 @@ typedef struct packed {
 	logic       valid;         // is inst a valid instruction to be counted for CPI calculations?
 
 	FUNC_UNIT   func_unit;     // function unit
+
+    logic [1:0] ready;
 } RS;
 
 
@@ -561,6 +567,26 @@ typedef struct packed {
     MEM_SIZE          mem_size;
     logic             valid;
 } EX_MEM_PACKET;
+
+
+typedef struct packed {
+    logic [`XLEN-1:0] alu_result;
+    logic [`XLEN-1:0] NPC;
+
+    logic             take_branch; // Is this a taken branch?
+    // Pass-through from decode stage
+    logic [`XLEN-1:0] rs2_value;
+    logic             rd_mem;
+    logic             wr_mem;
+    logic [4:0]       dest_reg_idx;
+    logic             halt;
+    logic             illegal;
+    logic             csr_op;
+    logic             rd_unsigned; // Whether proc2Dmem_data is signed or unsigned
+    MEM_SIZE          mem_size;
+    logic             valid;
+    logic [$clog2(`ROB_SIZE)-1:0] Tag;//dest rob entry
+} EX_PACKET;
 
 /**
  * MEM_WB Packet:

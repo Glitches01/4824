@@ -212,7 +212,7 @@ module pipeline (
 
         .squash                 (squash),
         .read_enable            (read_enable),//todo
-        //.ack                    (rs_mt_rob_enable),todo
+        .ack                    (rs_mt_rob_enable),//todo
 
         .if_ib_packet           (if_ib_packet),
 
@@ -256,7 +256,7 @@ module pipeline (
 
 
     CDB_PACKET              CDB_packet;      //todo
-    ROB_RS_PACKET   ROB_RS_packet;//todo
+    ROB_RS_PACKET   rob_rs_packet;//todo
     CP_RT_PACKET    cp_rt_packet;   //todo
     ROB rob(
         //Inputs
@@ -275,8 +275,8 @@ module pipeline (
 
         //Outputs
         .available          (available),    // going to DP_stage
-        .CP_RT_packet_out   (cp_rt_packet),    // going to retire stage
-        .ROB_RS_packet_out  (ROB_RS_packet),  // going to RS
+        .cp_rt_packet       (cp_rt_packet),    // going to retire stage
+        .rob_rs_packet      (rob_rs_packet),  // going to RS
         .rob_mt_packet      (rob_mt_packet)    // going to maptable
     );
 
@@ -292,6 +292,8 @@ module pipeline (
 
         .enable(rs_mt_rob_enable),
         .dp_rs_packet(dp_rs_packet),
+        .rob_rs_packet(rob_rs_packet),
+        .cdb_packet(CDB_packet),
 
         .rs_ex_packet(rs_ex_packet),
         .busy(busy)
@@ -299,10 +301,10 @@ module pipeline (
 
 
 
-    EX_MEM_PACKET ex_packet;
-    EX_MEM_PACKET ex_reg;
+    EX_PACKET ex_packet;
+    EX_PACKET ex_reg;
     execute u_execute(
-        .id_ex_reg (rs_ex_packet),
+        .rs_ex_packet (rs_ex_packet),
         .ex_packet (ex_packet)
     );
 
@@ -319,6 +321,7 @@ module pipeline (
         // .reset(reset),
 
         .ex_reg(ex_reg),
+        .cdb_packet(CDB_packet),
         .wb_regfile_en(wb_regfile_en),  // register write enable
         .wb_regfile_idx(wb_regfile_idx), // register write index
         .wb_regfile_data(wb_regfile_data) // register write data

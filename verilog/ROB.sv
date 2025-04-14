@@ -12,8 +12,8 @@ module ROB (
     input       MT_ROB_PACKET   mt_rob_packet,   
 
     output      logic           available,    //todo
-    output      CP_RT_PACKET    CP_RT_packet_out,   //todo
-    output      ROB_RS_PACKET   ROB_RS_packet_out,  
+    output      CP_RT_PACKET    cp_rt_packet,   //todo
+    output      ROB_RS_PACKET   rob_rs_packet,  
     output      ROB_MT_PACKET   rob_mt_packet
 );
 
@@ -46,12 +46,16 @@ module ROB (
             ROB_content_n[CDB_packet_in.Tag].valid   = CDB_packet_in.valid;
         end
 
+
+
+
+        //allocate entry
         if (enable) begin
-            ROB_RS_packet_out.Tag = tail_idx;
+            rob_rs_packet.Tag = tail_idx;
             rob_mt_packet.Tag = tail_idx;
             tail_n = tail + 1;
         end else begin
-            ROB_RS_packet_out.Tag = tail_idx;//todo
+            rob_rs_packet.Tag = tail_idx;//todo
             rob_mt_packet.Tag = tail_idx;//todo have changed
             tail_n = tail;
         end
@@ -74,11 +78,20 @@ module ROB (
         end
     end
 
-    assign ROB_RS_packet_out.rs1_value = mt_rob_packet.valid_vector[0] ? ROB_content[mt_rob_packet.RegS1_Tag].value : 0;//source
-    assign ROB_RS_packet_out.rs2_value = mt_rob_packet.valid_vector[1] ? ROB_content[mt_rob_packet.RegS2_Tag].value : 0;
+    //for RS
+    assign rob_rs_packet.rs1_value = mt_rob_packet.valid_vector[0] ? ROB_content[mt_rob_packet.RegS1_Tag].value : 0;//source
+    assign rob_rs_packet.rs2_value = mt_rob_packet.valid_vector[1] ? ROB_content[mt_rob_packet.RegS2_Tag].value : 0;
+    assign rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
+    assign rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
+    assign rob_rs_packet.valid_vector = mt_rob_packet.valid_vector;
+    assign rob_rs_packet.complete[0] = ROB_content[mt_rob_packet.RegS1_Tag].valid;
+    assign rob_rs_packet.complete[1] = ROB_content[mt_rob_packet.RegS2_Tag].valid;
 
-    assign CP_RT_packet_out.rob_entry = ROB_content[head_idx];
-    assign CP_RT_packet_out.Tag       = head_idx;
+
+
+    //for retire
+    assign cp_rt_packet.rob_entry = ROB_content[head_idx];
+    assign cp_rt_packet.Tag       = head_idx;
 
     //for full? rob_entry_available
     logic [$clog2(`ROB_SIZE)-1:0] next_tail;

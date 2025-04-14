@@ -134,7 +134,8 @@ module Dispatch (
     MAPTABLE rob_entry2;
     assign mt_rob_packet.RegS1_Tag = rob_entry1.rob_entry;
     assign mt_rob_packet.RegS2_Tag = rob_entry2.rob_entry;
-    assign mt_rob_packet.valid_vector = {rob_entry1.valid, rob_entry2.valid};
+    assign mt_rob_packet.valid_vector[0] = rob_entry1.valid;
+    assign mt_rob_packet.valid_vector[1] = rob_entry2.valid;
 
     logic [4:0] mt_read_idx_1, mt_read_idx_2;
     assign mt_read_idx_1 = (dp_rs_packet.opa_select == 2'h0)? ib_id_packet.inst.r.rs1:5'h0;
