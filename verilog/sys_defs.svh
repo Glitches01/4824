@@ -399,22 +399,25 @@ typedef struct packed {
 typedef struct packed {
     logic [4:0]         dest_reg_idx;  // destination (writeback) register index
     logic [`XLEN-1:0]   PC;
+    logic [`XLEN-1:0]   NPC;
 } DP_ROB_PACKET;
 
 
 
 
 typedef struct packed {
-	logic [4:0] 		reg_idx; 
-    logic [`XLEN-1:0]	value; // computing result from ex stage
-	logic 				cp_bit;    // If current insn is complete
-	logic				ep_bit;    // If current insn trigger exception
-	logic [`XLEN-1:0]	NPC;
-	logic [`XLEN-1:0]	PC;
-	logic             	halt, illegal; // forwarded
-	logic             	valid;    	// Used for CPI calculation
-    logic               wr_mem; 		// forwarded
+	logic [4:0] 		reg_idx; //enabletodo
+    logic [`XLEN-1:0]	value; // cdbtodo
+	logic 				cp_bit;    // cbdtodo
+	logic				ep_bit;    // ??todo
+	logic [`XLEN-1:0]	NPC;    //enabletodo
+	logic [`XLEN-1:0]	PC;     //enabletodo
+	logic             	halt, illegal; // ??
+	logic             	valid;    	// enable=0 cdb=1todo
+    logic               wr_mem; 		// ??
 } ROB_ENTRY;
+
+
 `define ROB_ADDR_BITS $clog2(`ROB_SIZE)
 typedef struct packed {
 	ROB_ENTRY		  			rob_entry;
@@ -442,6 +445,7 @@ typedef struct packed {
 
 typedef struct packed {
 	logic [`XLEN-1:0] Value;  // alu_result
+    logic [`XLEN-1:0] PC; 
 	logic [`XLEN-1:0] NPC;         // pc + 4, forwarded
 	logic             take_branch; // is this a taken branch?, forwarded
     INST              inst; 		// forwarded

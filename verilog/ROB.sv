@@ -6,7 +6,7 @@ module ROB (
     input                       reset,
     input                       squash_signal,//todo
 
-    input       CDB_PACKET      CDB_packet_in,      //todo
+    input       CDB_PACKET      CDB_packet_in,      //todo has to be one cycle???
     input       DP_ROB_PACKET   dp_rob_packet,//todo
     input                       enable,//enable for allocating the entry
     input       MT_ROB_PACKET   mt_rob_packet,   
@@ -33,6 +33,7 @@ module ROB (
 
         if (ROB_content[head_idx].cp_bit) begin
             ROB_content_n[head_idx].cp_bit = 1'b0;
+            ROB_content_n[head_idx].ep_bit = 1'b0;
             head_n = head + 1;
         end else begin
             head_n = head;
@@ -65,17 +66,34 @@ module ROB (
                 if (k == tail_idx) begin
                     ROB_content_n[k].reg_idx = dp_rob_packet.dest_reg_idx;//destination
                     ROB_content_n[k].PC      = dp_rob_packet.PC;
-                end else begin
-                    ROB_content_n[k].reg_idx = ROB_content[k].reg_idx;
-                    ROB_content_n[k].PC      = ROB_content[k].PC;
+                    ROB_content_n[k].NPC     = dp_rob_packet.NPC;
+                    ROB_content_n[k].cp_bit  = 1'b0;
+                    ROB_content_n[k].valid   = 1'b0;
                 end
             end
-        end else begin
-            for (integer unsigned k = 0; k < `ROB_SIZE; k = k + 1) begin
-                ROB_content_n[k].reg_idx = ROB_content[k].reg_idx;
-                ROB_content_n[k].PC      = ROB_content[k].PC;
-            end
         end
+
+        // if (enable) begin
+        //     for (integer unsigned k = 0; k < `ROB_SIZE; k = k + 1) begin
+        //         if (k == tail_idx) begin
+        //             ROB_content_n[k].reg_idx = dp_rob_packet.dest_reg_idx;//destination
+        //             ROB_content_n[k].PC      = dp_rob_packet.PC;
+        //             ROB_content_n[k].NPC      = dp_rob_packet.NPC;
+        //             ROB_content_n[k].valid   = 1'b0;
+        //         end else begin
+        //             ROB_content_n[k].reg_idx = ROB_content[k].reg_idx;
+        //             ROB_content_n[k].PC      = ROB_content[k].PC;
+        //             ROB_content_n[k].NPC      = ROB_content[k].NPC;
+        //             ROB_content_n[k].valid   = ROB_content_n[k].valid;
+        //         end
+        //     end
+        // end else begin
+        //     for (integer unsigned k = 0; k < `ROB_SIZE; k = k + 1) begin
+        //         ROB_content_n[k].reg_idx = ROB_content[k].reg_idx;
+        //         ROB_content_n[k].PC      = ROB_content[k].PC;
+        //         ROB_content_n[k].valid   = ROB_content_n[k].valid;
+        //     end
+        // end
     end
 
     //for RS

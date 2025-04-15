@@ -175,6 +175,8 @@ module pipeline (
     //                                              //
     //////////////////////////////////////////////////
     EX_PACKET ex_packet;
+    CDB_PACKET              CDB_packet;      //todo
+    EX_PACKET ex_reg;
     IF_IB_PACKET if_ib_packet[0:1];
     stage_if u_stage_if (
         // Inputs
@@ -183,9 +185,9 @@ module pipeline (
 
         .if_valid               (1'b1),
 
-        .branch_pc              (ex_packet.PC),
-        .take_branch            (ex_packet.take_branch),
-        .branch_target          (ex_packet.alu_result),
+        .branch_pc              (CDB_packet.PC),
+        .take_branch            (CDB_packet.take_branch),
+        .branch_target          (ex_reg.alu_result),
 
         //To Icache
         .IF_Icache_packet       (IF_Icache_packet),
@@ -237,7 +239,7 @@ module pipeline (
     DP_RS_PACKET  dp_rs_packet;
     DP_ROB_PACKET dp_rob_packet;
     MT_ROB_PACKET mt_rob_packet;
-    assign rs_mt_rob_enable = available && ((dp_rs_packet.mem && ((!busy[1]) || (!busy[0]))) || (!dp_rs_packet.mem && !busy[2])) && enable;
+    assign rs_mt_rob_enable = available && ((!dp_rs_packet.mem && ((!busy[1]) || (!busy[0]))) || (dp_rs_packet.mem && !busy[2])) && enable;
     Dispatch u_Dispatch(
         .clock              (clock),
         .reset              (reset),
@@ -258,7 +260,6 @@ module pipeline (
 
 
 
-    CDB_PACKET              CDB_packet;      //todo
     ROB_RS_PACKET   rob_rs_packet;//todo
     CP_RT_PACKET    cp_rt_packet;   //todo
     ROB rob(
@@ -304,8 +305,6 @@ module pipeline (
     );
 
 
-
-    EX_PACKET ex_reg;
     execute u_execute(
         .rs_ex_packet       (rs_ex_packet),
         .ex_packet          (ex_packet)
@@ -320,8 +319,8 @@ module pipeline (
     end
 
     complete u_complete(
-        // .clock(clock),
-        // .reset(reset),
+        .clock(clock),
+        .reset(reset),
 
         .ex_reg             (ex_reg),
         .cdb_packet         (CDB_packet),
