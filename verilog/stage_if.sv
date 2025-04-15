@@ -16,6 +16,7 @@ module stage_if (
 
     input                           if_valid,       // only go to next PC when true
 
+    input [`XLEN-1:0]               branch_pc,
     input                           take_branch,    // taken-branch signal
     input [`XLEN-1:0]               branch_target,  // target pc: use if take_branch is TRUE
 
@@ -35,8 +36,14 @@ module stage_if (
 	//////////////////////////////////////////////////////
     logic [`XLEN-1:0] PC_reg, NPC_reg; // PC we are currently fetching
     logic enable;
-    assign NPC_reg = PC_reg + 8;
-    assign enable = Icache_IF_packet.Icache_valid_out && if_valid;//todo could controls
+
+    always_comb begin//todo
+        NPC_reg = PC_reg + 8;
+        if (take_branch) begin
+            NPC_reg = branch_target;
+        end
+    end
+    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid) || (take_branch);//todo could controls
 
     // synopsys sync_set_reset "reset"
     always_ff @(posedge clock) begin

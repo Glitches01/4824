@@ -99,6 +99,7 @@ module execute (
     logic take_conditional;
 
     // Pass-throughs
+    assign ex_packet.PC           = rs_ex_packet.PC;
     assign ex_packet.NPC          = rs_ex_packet.NPC;
     assign ex_packet.rs2_value    = rs_ex_packet.rs2_value;
     assign ex_packet.rd_mem       = rs_ex_packet.rd_mem;

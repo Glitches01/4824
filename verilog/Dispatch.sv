@@ -511,7 +511,7 @@ module regfile (
     always_ff @(posedge clock) begin
         if(reset) begin
             for (integer i = 0; i < 32; i = i + 1) begin
-                registers[i] <= 32'hdeadface;
+                registers[i] <= 32'h0;
             end
         end else if (write_en && write_idx != `ZERO_REG) begin
             registers[write_idx] <= write_data;

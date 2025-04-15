@@ -174,6 +174,7 @@ module pipeline (
     //                  IF-Stage                    //
     //                                              //
     //////////////////////////////////////////////////
+    EX_PACKET ex_packet;
     IF_IB_PACKET if_ib_packet[0:1];
     stage_if u_stage_if (
         // Inputs
@@ -182,8 +183,9 @@ module pipeline (
 
         .if_valid               (1'b1),
 
-        .take_branch            (1'b0),
-        .branch_target          (0),
+        .branch_pc              (ex_packet.PC),
+        .take_branch            (ex_packet.take_branch),
+        .branch_target          (ex_packet.alu_result),
 
         //To Icache
         .IF_Icache_packet       (IF_Icache_packet),
@@ -200,11 +202,12 @@ module pipeline (
     //                                              //
     //////////////////////////////////////////////////
     IB_ID_PACKET ib_id_packet;
-    logic busy[0:1];
+    logic rs_available;
+    logic [2:0] busy;
     logic squash = 1'b0;//todo
     logic read_enable, enable;//todo
     logic available;//rob available
-    assign read_enable = available && 1 && (|{!busy[0],!busy[1]});
+    assign read_enable = available && 1 && rs_available;
     logic rs_mt_rob_enable;
     inst_buffer u_inst_buffer(
         .clock                  (clock),
@@ -234,7 +237,7 @@ module pipeline (
     DP_RS_PACKET  dp_rs_packet;
     DP_ROB_PACKET dp_rob_packet;
     MT_ROB_PACKET mt_rob_packet;
-    assign rs_mt_rob_enable = available && ((dp_rs_packet.mem && !busy[1]) || (!dp_rs_packet.mem && !busy[0])) && enable;
+    assign rs_mt_rob_enable = available && ((dp_rs_packet.mem && ((!busy[1]) || (!busy[0]))) || (!dp_rs_packet.mem && !busy[2])) && enable;
     Dispatch u_Dispatch(
         .clock              (clock),
         .reset              (reset),
@@ -287,25 +290,25 @@ module pipeline (
     ////////////////////////////////////////////////// 
     RS_EX_PACKET rs_ex_packet;
     ReservationStation u_ReservationStation(
-        .clock(clock),
-        .reset(reset),
+        .clock              (clock),
+        .reset              (reset),
 
-        .enable(rs_mt_rob_enable),
-        .dp_rs_packet(dp_rs_packet),
-        .rob_rs_packet(rob_rs_packet),
-        .cdb_packet(CDB_packet),
+        .enable             (rs_mt_rob_enable),
+        .dp_rs_packet       (dp_rs_packet),
+        .rob_rs_packet      (rob_rs_packet),
+        .cdb_packet         (CDB_packet),
 
-        .rs_ex_packet(rs_ex_packet),
-        .busy(busy)
+        .rs_ex_packet       (rs_ex_packet),
+        .rs_available       (rs_available),
+        .busy               (busy)
     );
 
 
 
-    EX_PACKET ex_packet;
     EX_PACKET ex_reg;
     execute u_execute(
-        .rs_ex_packet (rs_ex_packet),
-        .ex_packet (ex_packet)
+        .rs_ex_packet       (rs_ex_packet),
+        .ex_packet          (ex_packet)
     );
 
     always_ff @( posedge clock ) begin
@@ -320,11 +323,11 @@ module pipeline (
         // .clock(clock),
         // .reset(reset),
 
-        .ex_reg(ex_reg),
-        .cdb_packet(CDB_packet),
-        .wb_regfile_en(wb_regfile_en),  // register write enable
-        .wb_regfile_idx(wb_regfile_idx), // register write index
-        .wb_regfile_data(wb_regfile_data) // register write data
+        .ex_reg             (ex_reg),
+        .cdb_packet         (CDB_packet),
+        .wb_regfile_en      (wb_regfile_en),  // register write enable
+        .wb_regfile_idx     (wb_regfile_idx), // register write index
+        .wb_regfile_data    (wb_regfile_data) // register write data
 
         
 

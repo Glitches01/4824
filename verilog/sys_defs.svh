@@ -572,6 +572,7 @@ typedef struct packed {
 typedef struct packed {
     logic [`XLEN-1:0] alu_result;
     logic [`XLEN-1:0] NPC;
+    logic [`XLEN-1:0] PC;
 
     logic             take_branch; // Is this a taken branch?
     // Pass-through from decode stage

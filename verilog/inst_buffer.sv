@@ -45,24 +45,30 @@ module inst_buffer #(
             w_ptr <= w_ptr + 1;
         end
     end
+    
     logic read_phase;
+    logic ready;
     always_ff @( posedge clock ) begin : read
         if (reset) begin
             r_data <= 0;
             r_ptr <= 0;
             read_phase <= 0;
             enable <= 0;
+            ready <= 1;
         end else if(squash) begin
             r_ptr <= 0;
+            enable <= 0;
             read_phase <= 0;
-        end else if((r_en) && (!empty) && (read_phase == 0)) begin
+            ready <= 1;
+        end else if((r_en) && (!empty) && (read_phase == 0) && ready) begin
             r_data.valid <= buffer[r_ptr[ADDR-1:0]][0].valid;
             r_data.inst  <= buffer[r_ptr[ADDR-1:0]][0].inst;
             r_data.NPC   <= buffer[r_ptr[ADDR-1:0]][0].NPC;
             r_data.PC    <= buffer[r_ptr[ADDR-1:0]][0].PC;
             read_phase <= 1;
             enable <= 1;
-        end else if((r_en) && (!empty) && (read_phase == 1)) begin
+            ready <= 0;
+        end else if((r_en) && (!empty) && (read_phase == 1) && ready) begin
             r_data.valid <= buffer[r_ptr[ADDR-1:0]][1].valid;
             r_data.inst  <= buffer[r_ptr[ADDR-1:0]][1].inst;
             r_data.NPC   <= buffer[r_ptr[ADDR-1:0]][1].NPC;
@@ -70,9 +76,12 @@ module inst_buffer #(
             read_phase <= 0;
             enable <= 1;
             r_ptr <= r_ptr + 1;
+            ready <= 0;
         end else if(ack) begin
             r_data.valid <= 0;
             enable <= 0;
+        end else begin
+            ready <= 1;
         end
     end
 

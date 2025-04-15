@@ -79,13 +79,41 @@ module ROB (
     end
 
     //for RS
-    assign rob_rs_packet.rs1_value = mt_rob_packet.valid_vector[0] ? ROB_content[mt_rob_packet.RegS1_Tag].value : 0;//source
-    assign rob_rs_packet.rs2_value = mt_rob_packet.valid_vector[1] ? ROB_content[mt_rob_packet.RegS2_Tag].value : 0;
-    assign rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
-    assign rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
-    assign rob_rs_packet.valid_vector = mt_rob_packet.valid_vector;
-    assign rob_rs_packet.complete[0] = ROB_content[mt_rob_packet.RegS1_Tag].valid;
-    assign rob_rs_packet.complete[1] = ROB_content[mt_rob_packet.RegS2_Tag].valid;
+    always_comb begin
+        rob_rs_packet.rs1_value = mt_rob_packet.valid_vector[0] ? ROB_content[mt_rob_packet.RegS1_Tag].value : 0;//source
+        rob_rs_packet.rs2_value = mt_rob_packet.valid_vector[1] ? ROB_content[mt_rob_packet.RegS2_Tag].value : 0;
+
+        rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
+        rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
+
+        rob_rs_packet.valid_vector = mt_rob_packet.valid_vector;
+
+        rob_rs_packet.complete[0] = ROB_content[mt_rob_packet.RegS1_Tag].valid;
+        rob_rs_packet.complete[1] = ROB_content[mt_rob_packet.RegS2_Tag].valid;
+
+        if (CDB_packet_in.valid && CDB_packet_in.Tag == mt_rob_packet.RegS1_Tag) begin
+            rob_rs_packet.rs1_value = CDB_packet_in.Value;
+            rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
+            rob_rs_packet.valid_vector[0] = 1'b1; 
+            rob_rs_packet.complete[0] = 1'b1;
+        end
+
+        if (CDB_packet_in.valid && CDB_packet_in.Tag == mt_rob_packet.RegS2_Tag) begin
+            rob_rs_packet.rs2_value = CDB_packet_in.Value;
+            rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
+            rob_rs_packet.valid_vector[1] = 1'b1; 
+            rob_rs_packet.complete[1] = 1'b1;
+        end   
+    end
+
+
+    // assign rob_rs_packet.rs1_value = mt_rob_packet.valid_vector[0] ? ROB_content[mt_rob_packet.RegS1_Tag].value : 0;//source
+    // assign rob_rs_packet.rs2_value = mt_rob_packet.valid_vector[1] ? ROB_content[mt_rob_packet.RegS2_Tag].value : 0;
+    // assign rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
+    // assign rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
+    // assign rob_rs_packet.valid_vector = mt_rob_packet.valid_vector;
+    // assign rob_rs_packet.complete[0] = ROB_content[mt_rob_packet.RegS1_Tag].valid;
+    // assign rob_rs_packet.complete[1] = ROB_content[mt_rob_packet.RegS2_Tag].valid;
 
 
 
