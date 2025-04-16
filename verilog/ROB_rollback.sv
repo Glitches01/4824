@@ -26,17 +26,28 @@ module ROB (
     wire [$clog2(`ROB_SIZE)-1:0] head_idx = head[$clog2(`ROB_SIZE)-1:0];
     wire [$clog2(`ROB_SIZE)-1:0] tail_idx = tail[$clog2(`ROB_SIZE)-1:0];
 
-
     always_comb begin
         for (integer unsigned j = 0; j < `ROB_SIZE; j = j + 1)
             ROB_content_n[j] = ROB_content[j];
+        //todo should i complete/cp parallel priority with enbale? or enable first
+        if (ROB_content[head_idx].cp_bit) begin
+            ROB_content_n[head_idx].cp_bit = 1'b0;
+            head_n = head + 1;
+        end else begin
+            head_n = head;
+        end
+
+	if (ROB_content[head_idx].ep_bit) begin//todo roll-back
+                ROB_content_n[head_idx].ep_bit = 1'b0;
+                tail_n = head_idx + 1;//?ep_idx
+		head = head;
+        end
 
         if (CDB_packet_in.valid) begin
             ROB_content_n[CDB_packet_in.Tag].value   = CDB_packet_in.Value;
             ROB_content_n[CDB_packet_in.Tag].cp_bit  = 1'b1;
             ROB_content_n[CDB_packet_in.Tag].ep_bit  = CDB_packet_in.take_branch;
             ROB_content_n[CDB_packet_in.Tag].NPC     = CDB_packet_in.NPC;
-            ROB_content_n[CDB_packet_in.Tag].PC      = CDB_packet_in.PC;
             ROB_content_n[CDB_packet_in.Tag].valid   = CDB_packet_in.valid;
         end
 
@@ -64,16 +75,6 @@ module ROB (
                     ROB_content_n[k].valid   = 1'b0;
                 end
             end
-        end if (ROB_content[head_idx].cp_bit) begin  //todo should i complete/cp parallel priority with enbale? or enable first
-            ROB_content_n[head_idx].cp_bit = 1'b0;
-            if (ROB_content[head_idx].ep_bit) begin//todo roll-back
-                ROB_content_n[head_idx].ep_bit = 1'b0;
-                tail_n = head + 1;
-            end
-            head_n = head + 1;
-        end else begin
-            head_n = head;
-            tail_n = tail_n;
         end
 
         // if (enable) begin

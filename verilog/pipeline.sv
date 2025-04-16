@@ -209,13 +209,14 @@ module pipeline (
     logic squash = 1'b0;//todo
     logic read_enable, enable;//todo
     logic available;//rob available
+
     assign read_enable = available && 1 && rs_available;
     logic rs_mt_rob_enable;
     inst_buffer u_inst_buffer(
         .clock                  (clock),
         .reset                  (reset),
 
-        .squash                 (squash),
+        .squash                 (CDB_packet.take_branch),
         .read_enable            (read_enable),//todo
         .ack                    (rs_mt_rob_enable),//todo
 
@@ -239,7 +240,7 @@ module pipeline (
     DP_RS_PACKET  dp_rs_packet;
     DP_ROB_PACKET dp_rob_packet;
     MT_ROB_PACKET mt_rob_packet;
-    assign rs_mt_rob_enable = available && ((!dp_rs_packet.mem && ((!busy[1]) || (!busy[0]))) || (dp_rs_packet.mem && !busy[2])) && enable;
+    assign rs_mt_rob_enable = dp_rs_packet.valid && available && ((!dp_rs_packet.mem && ((!busy[1]) || (!busy[0]))) || (dp_rs_packet.mem && !busy[2])) && enable;
     Dispatch u_Dispatch(
         .clock              (clock),
         .reset              (reset),
@@ -248,14 +249,15 @@ module pipeline (
         //input
         .ib_id_packet       (ib_id_packet),
         .rob_mt_packet      (rob_mt_packet),
+        .take_branch        (CDB_packet.take_branch),
         //output
         .dp_rs_packet       (dp_rs_packet),
         .dp_rob_packet      (dp_rob_packet),
         .mt_rob_packet      (mt_rob_packet),
 
-        .wb_regfile_en      (wb_regfile_en),  // register write enable
-        .wb_regfile_idx     (wb_regfile_idx), // register write index
-        .wb_regfile_data    (wb_regfile_data) // register write data
+        .wb_regfile_en      (cp_rt_packet.rob_entry.cp_bit),  // register write enable
+        .wb_regfile_idx     (cp_rt_packet.rob_entry.reg_idx), // register write index
+        .wb_regfile_data    (cp_rt_packet.rob_entry.value) // register write data
     );
 
 
@@ -300,7 +302,7 @@ module pipeline (
         .cdb_packet         (CDB_packet),
 
         .rs_ex_packet       (rs_ex_packet),
-        .rs_available       (rs_available),
+        .read_enable       (rs_available),
         .busy               (busy)
     );
 

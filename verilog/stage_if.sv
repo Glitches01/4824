@@ -39,18 +39,17 @@ module stage_if (
 
     always_comb begin//todo
         NPC_reg = PC_reg + 8;
-        if (take_branch) begin
-            NPC_reg = branch_target;
-        end
     end
-    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid) || (take_branch);//todo could controls
+    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid && (Icache_IF_packet.Icache_data_out != 64'h0));//todo could controls
 
     // synopsys sync_set_reset "reset"
     always_ff @(posedge clock) begin
         if (reset) begin
             PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
+        end else if (take_branch) begin
+            PC_reg <= branch_target;    // or transition to next PC if valid
         end else if (enable) begin
-            PC_reg <= NPC_reg;    // or transition to next PC if valid
+            PC_reg <= NPC_reg;
         end
     end
 

@@ -74,7 +74,10 @@
     li x2, 1
     li x3, 1
     li x4, 16
+
 loop: add	x3,	x2,	x2
     add x2, x2, x2
     add x1, x1, 1
-    bne	x1,	x6,	loop
+    blt	x1,	x4,	loop
+
+wfi

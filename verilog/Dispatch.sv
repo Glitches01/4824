@@ -18,6 +18,8 @@ module Dispatch (
     input  IB_ID_PACKET ib_id_packet,
 
     input ROB_MT_PACKET rob_mt_packet,
+
+    input logic take_branch,
     //output ID_IB_PACKET id_ib_packet,
     
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +148,7 @@ module Dispatch (
         .reset              (reset),
 
         .enable             (enable),
+        .squash             (take_branch),
 
         .read_idx_1         (mt_read_idx_1),
         .read_idx_2         (mt_read_idx_2),
@@ -169,6 +172,7 @@ module MapTable #(
     input reset,
 
     input enable,//todo
+    input squash,
 
     input [4:0] read_idx_1,
     input [4:0] read_idx_2,
@@ -187,6 +191,10 @@ module MapTable #(
 
     always_ff @(posedge clock) begin : blockName
         if(reset) begin
+            for (integer i = 0; i < 32; i = i + 1) begin
+                maptable[i] <= 0;
+            end
+        end else if (squash) begin
             for (integer i = 0; i < 32; i = i + 1) begin
                 maptable[i] <= 0;
             end

@@ -9,7 +9,7 @@ module ReservationStation (
     // output rs_dp_packet rs_dp_packet,
 
     output RS_EX_PACKET rs_ex_packet,
-    output rs_available,
+    output logic read_enable,
     output [2:0] busy
 );
 
@@ -26,14 +26,32 @@ module ReservationStation (
     assign busy[1] = rs_alu2.busy;
     assign busy[2] = rs_mem.busy;
 
-    assign rs_available = |{!busy[0], !busy[1], !busy[2]};
+    //assign rs_available = |{!busy[0], !busy[1], 0};
 
     logic [`XLEN:0] rs1_value, rs2_value;
     logic [$clog2(`ROB_SIZE)-1:0]  Tag;
     logic [$clog2(`ROB_SIZE)-1:0]  RS1_Tag, RS2_Tag;
     logic ready[0:1];
 
+    
+    logic prev_read_enable;
 
+    // 组合逻辑：判断是否有 RS 空闲，且上一周期未触发读操作
+    wire rs_available = (!busy[0] || !busy[1]) && !prev_read_enable;
+
+    // 时序逻辑：生成 read_enable
+    always @(posedge clock) begin
+        if (reset) begin
+            read_enable      <= 1'b0;
+            prev_read_enable <= 1'b0;
+        end else begin
+            // 生成单周期脉冲
+            read_enable <= rs_available;
+
+            // 记录上一周期的读操作状态
+            prev_read_enable <= read_enable;
+        end
+    end
 
     //rs1_value RS1_Tag rs2_value RS2_Tag Tag ready
     always_comb begin
@@ -75,7 +93,11 @@ module ReservationStation (
     always_ff @( posedge clock ) begin
         if (reset) begin
             rs_alu <= 0;
-        end else if (enable_alu) begin
+        end
+        else if (cdb_packet.take_branch) begin
+            rs_alu <= 0;
+        end
+        else if (enable_alu) begin
             rs_alu.inst             <= dp_rs_packet.inst;
             rs_alu.NPC              <= dp_rs_packet.NPC;
             rs_alu.PC               <= dp_rs_packet.PC;
@@ -128,7 +150,11 @@ module ReservationStation (
     always_ff @( posedge clock ) begin
         if (reset) begin
             rs_alu2 <= 0;
-        end else if (enable_alu2) begin
+        end 
+        else if (cdb_packet.take_branch) begin
+            rs_alu2 <= 0;
+        end
+        else if (enable_alu2) begin
             rs_alu2.inst             <= dp_rs_packet.inst;
             rs_alu2.NPC              <= dp_rs_packet.NPC;
             rs_alu2.PC               <= dp_rs_packet.PC;
@@ -183,7 +209,11 @@ module ReservationStation (
     always_ff @( posedge clock ) begin
         if (reset) begin
             rs_mem <= 0;
-        end else if (enable_mem) begin
+        end
+        else if (cdb_packet.take_branch) begin
+            rs_mem <= 0;
+        end  
+        else if (enable_mem) begin
             rs_mem.inst             <= dp_rs_packet.inst;
             rs_mem.NPC              <= dp_rs_packet.NPC;
             rs_mem.PC               <= dp_rs_packet.PC;
