@@ -350,14 +350,15 @@ module pipeline (
     //                                              //
     //////////////////////////////////////////////////
 
-    // assign pipeline_completed_insts = {3'b0, mem_wb_reg.valid}; // commit one valid instruction
+    assign pipeline_completed_insts = {3'b0, CDB_packet.valid}; // commit one valid instruction
     // assign pipeline_error_status = mem_wb_reg.illegal        ? ILLEGAL_INST :
     //                                mem_wb_reg.halt           ? HALTED_ON_WFI :
     //                                (mem2proc_response==4'h0) ? LOAD_ACCESS_FAULT : NO_ERROR;
+    assign pipeline_error_status = NO_ERROR;
 
-    // assign pipeline_commit_wr_en   = wb_regfile_en;
-    // assign pipeline_commit_wr_idx  = wb_regfile_idx;
-    // assign pipeline_commit_wr_data = wb_regfile_data;
-    // assign pipeline_commit_NPC     = mem_wb_reg.NPC;
+    assign pipeline_commit_wr_en   = wb_regfile_en;
+    assign pipeline_commit_wr_idx  = wb_regfile_idx;
+    assign pipeline_commit_wr_data = wb_regfile_data;
+    assign pipeline_commit_NPC     = CDB_packet.NPC;
 
 endmodule // pipeline

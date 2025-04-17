@@ -226,9 +226,9 @@ module testbench;
 
     end
 
-    initial begin
-                #10000 $finish;
-    end
+    // initial begin
+    //             #10000 $finish;
+    // end
 
     // Count the number of posedges and number of instructions completed
     // till simulation ends
@@ -243,65 +243,65 @@ module testbench;
     end
 
 
-    // always @(negedge clock) begin
-    //     if(reset) begin
-    //         $display("@@\n@@  %t : System STILL at reset, can't show anything\n@@",
-    //                  $realtime);
-    //         debug_counter <= 0;
-    //     end else begin
-    //         #2;
+    always @(negedge clock) begin
+        if(reset) begin
+            $display("@@\n@@  %t : System STILL at reset, can't show anything\n@@",
+                     $realtime);
+            debug_counter <= 0;
+        end else begin
+            //#1;
 
-    //         // print the pipeline debug outputs via c code to the pipeline output file
-    //         print_cycles();
-    //         print_stage(" ", if_inst_dbg,     if_NPC_dbg    [31:0], {31'b0,if_valid_dbg});
-    //         print_stage("|", if_id_inst_dbg,  if_id_NPC_dbg [31:0], {31'b0,if_id_valid_dbg});
-    //         print_stage("|", id_ex_inst_dbg,  id_ex_NPC_dbg [31:0], {31'b0,id_ex_valid_dbg});
-    //         print_stage("|", ex_mem_inst_dbg, ex_mem_NPC_dbg[31:0], {31'b0,ex_mem_valid_dbg});
-    //         print_stage("|", mem_wb_inst_dbg, mem_wb_NPC_dbg[31:0], {31'b0,mem_wb_valid_dbg});
-    //         print_reg(32'b0, pipeline_commit_wr_data[31:0],
-    //             {27'b0,pipeline_commit_wr_idx}, {31'b0,pipeline_commit_wr_en});
-    //         print_membus({30'b0,proc2mem_command}, {28'b0,mem2proc_response},
-    //             32'b0, proc2mem_addr[31:0],
-    //             proc2mem_data[63:32], proc2mem_data[31:0]);
+            // print the pipeline debug outputs via c code to the pipeline output file
+            // print_cycles();
+            // print_stage(" ", if_inst_dbg,     if_NPC_dbg    [31:0], {31'b0,if_valid_dbg});
+            // print_stage("|", if_id_inst_dbg,  if_id_NPC_dbg [31:0], {31'b0,if_id_valid_dbg});
+            // print_stage("|", id_ex_inst_dbg,  id_ex_NPC_dbg [31:0], {31'b0,id_ex_valid_dbg});
+            // print_stage("|", ex_mem_inst_dbg, ex_mem_NPC_dbg[31:0], {31'b0,ex_mem_valid_dbg});
+            // print_stage("|", mem_wb_inst_dbg, mem_wb_NPC_dbg[31:0], {31'b0,mem_wb_valid_dbg});
+            // print_reg(32'b0, pipeline_commit_wr_data[31:0],
+            //     {27'b0,pipeline_commit_wr_idx}, {31'b0,pipeline_commit_wr_en});
+            // print_membus({30'b0,proc2mem_command}, {28'b0,mem2proc_response},
+            //     32'b0, proc2mem_addr[31:0],
+            //     proc2mem_data[63:32], proc2mem_data[31:0]);
 
-    //         // print register write information to the writeback output file
-    //         if (pipeline_completed_insts > 0) begin
-    //             if(pipeline_commit_wr_en)
-    //                 $fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
-    //                           pipeline_commit_NPC - 4,
-    //                           pipeline_commit_wr_idx,
-    //                           pipeline_commit_wr_data);
-    //             else
-    //                 $fdisplay(wb_fileno, "PC=%x, ---", pipeline_commit_NPC - 4);
-    //         end
+            // print register write information to the writeback output file
+            if (pipeline_completed_insts > 0) begin
+                if(pipeline_commit_wr_en)
+                    $fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
+                              pipeline_commit_NPC - 4,
+                              pipeline_commit_wr_idx,
+                              pipeline_commit_wr_data);
+                else
+                    $fdisplay(wb_fileno, "PC=%x, ---", pipeline_commit_NPC - 4);
+            end
 
-    //         // deal with any halting conditions
-    //         if(pipeline_error_status != NO_ERROR || debug_counter > 50000000) begin
-    //             $display("@@@ Unified Memory contents hex on left, decimal on right: ");
-    //             show_mem_with_decimal(0,`MEM_64BIT_LINES - 1);
-    //             // 8Bytes per line, 16kB total
+            // deal with any halting conditions
+            if(pipeline_error_status != NO_ERROR || debug_counter > 10000) begin
+                $display("@@@ Unified Memory contents hex on left, decimal on right: ");
+                show_mem_with_decimal(0,`MEM_64BIT_LINES - 1);
+                // 8Bytes per line, 16kB total
 
-    //             $display("@@  %t : System halted\n@@", $realtime);
+                $display("@@  %t : System halted\n@@", $realtime);
 
-    //             case(pipeline_error_status)
-    //                 LOAD_ACCESS_FAULT:
-    //                     $display("@@@ System halted on memory error");
-    //                 HALTED_ON_WFI:
-    //                     $display("@@@ System halted on WFI instruction");
-    //                 ILLEGAL_INST:
-    //                     $display("@@@ System halted on illegal instruction");
-    //                 default:
-    //                     $display("@@@ System halted on unknown error code %x",
-    //                         pipeline_error_status);
-    //             endcase
-    //             $display("@@@\n@@");
-    //             show_clk_count;
-    //             print_close(); // close the pipe_print output file
-    //             $fclose(wb_fileno);
-    //             #100 $finish;
-    //         end
-    //         debug_counter <= debug_counter + 1;
-    //     end // if(reset)
-    // end
+                case(pipeline_error_status)
+                    LOAD_ACCESS_FAULT:
+                        $display("@@@ System halted on memory error");
+                    HALTED_ON_WFI:
+                        $display("@@@ System halted on WFI instruction");
+                    ILLEGAL_INST:
+                        $display("@@@ System halted on illegal instruction");
+                    default:
+                        $display("@@@ System halted on unknown error code %x",
+                            pipeline_error_status);
+                endcase
+                $display("@@@\n@@");
+                show_clk_count;
+                print_close(); // close the pipe_print output file
+                $fclose(wb_fileno);
+                #100 $finish;
+            end
+            debug_counter <= debug_counter + 1;
+        end // if(reset)
+    end
 
 endmodule // module testbench
