@@ -47,7 +47,11 @@ module stage_if (
         if (reset) begin
             PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
         end else if (take_branch) begin
-            PC_reg <= branch_target;    // or transition to next PC if valid
+            if (branch_target[2]) begin
+                PC_reg <= branch_target - 4;
+            end else begin
+                PC_reg <= branch_target;
+            end
         end else if (enable) begin
             PC_reg <= NPC_reg;
         end
@@ -65,12 +69,12 @@ module stage_if (
 	//	To Inst Buffer
 	//////////////////////////////////////////////////////
     always_comb begin
-        if_ib_packet[0].valid      = Icache_IF_packet.Icache_valid_out;
+        if_ib_packet[0].valid      = enable;
         if_ib_packet[0].inst       = Icache_IF_packet.Icache_data_out[31:0];
         if_ib_packet[0].NPC        = PC_reg + 4;
         if_ib_packet[0].PC         = PC_reg;
 
-        if_ib_packet[1].valid      = Icache_IF_packet.Icache_valid_out;
+        if_ib_packet[1].valid      = enable;
         if_ib_packet[1].inst       = Icache_IF_packet.Icache_data_out[63:32];
         if_ib_packet[1].NPC        = NPC_reg;
         if_ib_packet[1].PC         = PC_reg + 4;

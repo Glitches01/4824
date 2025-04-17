@@ -32,6 +32,7 @@ module ROB (
             ROB_content_n[j] = ROB_content[j];
 
         if (CDB_packet_in.valid) begin
+            ROB_content_n[CDB_packet_in.Tag].inst    = CDB_packet_in.inst;
             ROB_content_n[CDB_packet_in.Tag].value   = CDB_packet_in.Value;
             ROB_content_n[CDB_packet_in.Tag].cp_bit  = 1'b1;
             ROB_content_n[CDB_packet_in.Tag].ep_bit  = CDB_packet_in.take_branch;

@@ -37,7 +37,7 @@ module ReservationStation (
     logic prev_read_enable;
 
     // 组合逻辑：判断是否有 RS 空闲，且上一周期未触发读操作
-    wire rs_available = (!busy[0] || !busy[1]) && !prev_read_enable;
+    wire rs_available = (!busy[0] || !busy[1] || !busy[2]) && !prev_read_enable;//todo to fast maybe gg
 
     // 时序逻辑：生成 read_enable
     always @(posedge clock) begin

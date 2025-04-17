@@ -406,6 +406,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    INST                inst;//todo
 	logic [4:0] 		reg_idx; //enabletodo
     logic [`XLEN-1:0]	value; // cdbtodo
 	logic 				cp_bit;    // cbdtodo
@@ -444,6 +445,7 @@ typedef struct packed {
 } MT_ROB_PACKET; //to ROB
 
 typedef struct packed {
+    INST              inst;
 	logic [`XLEN-1:0] Value;  // alu_result
     logic [`XLEN-1:0] PC; 
 	logic [`XLEN-1:0] NPC;         // pc + 4, forwarded
@@ -574,6 +576,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    INST              inst;
     logic [`XLEN-1:0] alu_result;
     logic [`XLEN-1:0] NPC;
     logic [`XLEN-1:0] PC;

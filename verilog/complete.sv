@@ -15,6 +15,7 @@ module complete (
     always_comb begin
         case (select)
             default: begin
+                cdb_packet.inst         = ex_reg.inst;
                 cdb_packet.Value        = wb_regfile_data; 
                 cdb_packet.PC           = ex_reg.PC;     
 	            cdb_packet.NPC          = ex_reg.NPC;     

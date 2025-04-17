@@ -114,8 +114,8 @@ module pipeline (
     //                                                                     //
     /////////////////////////////////////////////////////////////////////////
     logic mem2Icache_ack;
-    //assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command) && (!proc2Dmem_command);//todo
-    assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command);
+    assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command);// && (!proc2Dmem_command);//todo
+    //assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command);
     // && (!proc2Dmem_command);
     IF_ICACHE_PACKET IF_Icache_packet;
     ICACHE_IF_PACKET Icache_IF_packet;
@@ -143,31 +143,38 @@ module pipeline (
         .proc2Imem_addr         (Icache2mem_addr)      // output to mem
     );
 
-    // icache u_icache(
-    //     //system signal
-    //     .clock                  (clock),
+
+    /////////////////////////////////////////////////////////////////////////
+    //                                                                     //
+    //  Instance Name :  u_dcache                                          //
+    //                                                                     //
+    //  Description :  Normal dcache provided by 4824                      //
+    //                                                                     //
+    /////////////////////////////////////////////////////////////////////////
+    // dcache u_dcache(
+    //     .clock                  (clock), 
     //     .reset                  (reset),
 
-    //     //From Retire
-    //     .squash_en              (1'b0), //todo
+    //     //from LSQ
+    //     .lsq2dcache_packet      (lsq2dcache_packet),
 
-    //     //From MEM
-    //     .mem2Icache_response_in (mem2proc_response),  // from mem, note the "I"
-    //     .mem2Icache_data_in     (mem2proc_data),      // from mem
-    //     .mem2Icache_tag_in      (mem2proc_tag),       // from mem
+    //     //from MEMORY
+    //     .Dmem2proc_response     (mem2proc_response),
+    //     .Dmem2proc_data         (mem2proc_data),
+    //     .Dmem2proc_tag          (mem2proc_tag),
 
+    //     //to LSQ (and ROB)
+    //     .dcache2lsq_packet      (dcache2lsq_packet),
 
-    //     .mem2Icache_ack_in      (mem2Icache_ack),
+    //     //to testbench and cache set
+    //     .cache_data             (dcache_data),
 
-    //     //From FETCH
-    //     .IF_Icache_packet_in    (IF_Icache_packet),   //addr, request
-    //     //To Fetch
-    //     .Icache_IF_packet_out   (Icache_IF_packet),   //data, hit, valid
-
-    //     //To MEM
-    //     .Icache2mem_command_out (Icache2mem_command),  // output to mem
-    //     .Icache2mem_addr_out    (Icache2mem_addr)      // output to mem
+    //     //to MEMORY
+    //     .proc2Dmem_addr         (proc2Dmem_addr),
+    //     .proc2Dmem_data         (proc2Dmem_data),
+    //     .proc2Dmem_command      (proc2Dmem_command)
     // );
+
 
     //////////////////////////////////////////////////
     //                                              //
@@ -217,6 +224,7 @@ module pipeline (
         .reset                  (reset),
 
         .squash                 (CDB_packet.take_branch),
+        .branch_target          (ex_reg.alu_result),
         .read_enable            (read_enable),//todo
         .ack                    (rs_mt_rob_enable),//todo
 
@@ -334,36 +342,6 @@ module pipeline (
 
     );
 
-    /////////////////////////////////////////////////////////////////////////
-    //                                                                     //
-    //  Instance Name :  u_dcache                                          //
-    //                                                                     //
-    //  Description :  Normal dcache provided by 4824                      //
-    //                                                                     //
-    /////////////////////////////////////////////////////////////////////////
-    // dcache u_dcache(
-    //     .clock                  (clock), 
-    //     .reset                  (reset),
-
-    //     //from LSQ
-    //     .lsq2dcache_packet      (lsq2dcache_packet),
-
-    //     //from MEMORY
-    //     .Dmem2proc_response     (mem2proc_response),
-    //     .Dmem2proc_data         (mem2proc_data),
-    //     .Dmem2proc_tag          (mem2proc_tag),
-
-    //     //to LSQ (and ROB)
-    //     .dcache2lsq_packet      (dcache2lsq_packet),
-
-    //     //to testbench and cache set
-    //     .cache_data             (dcache_data),
-
-    //     //to MEMORY
-    //     .proc2Dmem_addr         (proc2Dmem_addr),
-    //     .proc2Dmem_data         (proc2Dmem_data),
-    //     .proc2Dmem_command      (proc2Dmem_command)
-    // );
 
 
     //////////////////////////////////////////////////

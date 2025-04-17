@@ -7,6 +7,7 @@ module inst_buffer #(
     input                   reset,
 
     input                   squash,
+    input  [`XLEN-1:0]      branch_target,
 
     input read_enable,
     input  IF_IB_PACKET     if_ib_packet[0:1],
@@ -56,9 +57,13 @@ module inst_buffer #(
             enable <= 0;
             ready <= 1;
         end else if(squash) begin
+            if (branch_target[2] == 1) begin
+                read_phase <= 1;
+            end else begin
+                read_phase <= 0;
+            end
             r_ptr <= 0;
             enable <= 0;
-            read_phase <= 0;
             ready <= 1;
         end else if((r_en) && (!empty) && (read_phase == 0) && ready) begin
             r_data.valid <= buffer[r_ptr[ADDR-1:0]][0].valid;
