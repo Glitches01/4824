@@ -1,16 +1,16 @@
 module ReservationStation (
-    input   clock,
-    input   reset,
+    input                   clock,
+    input                   reset,
 
-    input   DP_RS_PACKET dp_rs_packet,
-    input   enable,
-    input   ROB_RS_PACKET rob_rs_packet,
-    input   CDB_PACKET cdb_packet,
+    input   DP_RS_PACKET    dp_rs_packet,
+    input                   enable,
+    input   ROB_RS_PACKET   rob_rs_packet,
+    input   CDB_PACKET      cdb_packet,
     // output rs_dp_packet rs_dp_packet,
 
-    output RS_EX_PACKET rs_ex_packet,
-    output logic read_enable,
-    output [2:0] busy
+    output RS_EX_PACKET     rs_ex_packet,
+    output logic            read_enable,
+    output [2:0]            busy
 );
 
     logic [1:0] gnt;
@@ -335,4 +335,74 @@ always_comb begin
     endcase
 end
 
+endmodule
+
+module RS #(
+    parameters
+) (
+    input clock, reset,
+
+    input flush,
+
+    input DP_RS_PACKET              dp_rs_packet,
+    input [$clog2(`ROB_SIZE)-1:0]   RS1_Tag, RS2_Tag, Tag,
+    input [`XLEN:0]                 rs1_value, rs2_value,
+    input [1:0]                     ready,
+    input CDB_PACKET                cdb_packet,
+
+    output RS rs
+);
+    always_ff @( posedge clock ) begin
+        if (reset) begin
+            rs <= 0;
+        end
+        else if (flush) begin
+            rs <= 0;
+        end
+        else if (enable_alu) begin
+            rs.inst             <= dp_rs_packet.inst;
+            rs.NPC              <= dp_rs_packet.NPC;
+            rs.PC               <= dp_rs_packet.PC;
+            rs.busy             <= 1;
+
+            rs.Tag              <= Tag;
+
+            rs.RegS1_Tag        <= RS1_Tag;
+            rs.RegS2_Tag        <= RS2_Tag;
+
+            rs.ready[0]         <= ready[0];
+            rs.ready[1]         <= ready[1];
+
+            rs.rs1_value        <= rs1_value;
+            rs.rs2_value        <= rs2_value;
+            rs.opa_select       <= dp_rs_packet.opa_select;
+            rs.opb_select       <= dp_rs_packet.opb_select;
+            rs.dest_reg_idx     <= dp_rs_packet.dest_reg_idx;
+            rs.alu_func         <= dp_rs_packet.alu_func;
+            rs.rd_mem           <= dp_rs_packet.rd_mem;
+            rs.wr_mem           <= dp_rs_packet.wr_mem;
+            rs.cond_branch      <= dp_rs_packet.cond_branch;
+            rs.uncond_branch    <= dp_rs_packet.uncond_branch;
+            rs.halt             <= dp_rs_packet.halt;
+            rs.illegal          <= dp_rs_packet.illegal;
+            rs.csr_op           <= dp_rs_packet.csr_op;
+            rs.valid            <= dp_rs_packet.valid;
+            rs.func_unit        <= 1;
+        end else if(cdb_packet.valid) begin
+            if ((rs.RegS1_Tag != 5'h0) && (cdb_packet.Tag == rs.RegS1_Tag)) begin
+                rs.rs1_value <= cdb_packet.Value;
+                rs.ready[0]  <= 1;
+            end
+            if ((rs.RegS2_Tag != 5'h0) && (cdb_packet.Tag == rs.RegS2_Tag)) begin
+                rs.rs2_value <= cdb_packet.Value;
+                rs.ready[1]  <= 1;
+            end
+            if(cdb_packet.valid && (cdb_packet.Tag == rs.Tag)) begin
+                rs.busy <= 0;
+            end
+        end else if (rs_ex_packet.PC == rs.PC) begin
+            rs.ready[0]         <= 1'b0;
+            rs.ready[1]         <= 1'b0;
+        end
+    end
 endmodule

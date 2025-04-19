@@ -329,7 +329,7 @@ SOURCES = verilog/pipeline.sv \
 		  verilog/stage_if.sv \
 		  verilog/inst_buffer.sv \
 		  verilog/Dispatch.sv \
-		  verilog/ReservationStation.sv \
+		  verilog/RS.sv \
 		  verilog/execute.sv \
 		  verilog/complete.sv \
 		  verilog/ROB.sv
@@ -489,7 +489,7 @@ OUTPUTS = $(PROGRAMS:programs/%=output/%)
 # run a program and produce output files
 $(OUTPUTS:=.out): output/%.out: programs/%.mem simv | output
 	@$(call PRINT_COLOR, 5, running simv on $<)
-	./simv -gui +MEMORY=$< +WRITEBACK=$(@D)/$*.wb +PIPELINE=$(@D)/$*.ppln > $@
+	./simv +MEMORY=$< +WRITEBACK=$(@D)/$*.wb +PIPELINE=$(@D)/$*.ppln > $@
 	@$(call PRINT_COLOR, 6, finished running simv on $<)
 	@$(call PRINT_COLOR, 2, output is in $@ $(@D)/$*.wb and $(@D)/$*.ppln)
 # NOTE: this uses a 'static pattern rule' to match a list of known targets to a pattern

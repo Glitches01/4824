@@ -399,7 +399,7 @@ module decoder (
                     csr_op = `TRUE;
                 end
                 `WFI: begin
-                    halt = `TRUE;
+                    halt = `TRUE;//todo
                 end
                 default: begin
                     illegal = `TRUE;

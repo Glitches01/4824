@@ -310,7 +310,7 @@ module pipeline (
         .cdb_packet         (CDB_packet),
 
         .rs_ex_packet       (rs_ex_packet),
-        .read_enable       (rs_available),
+        .read_enable        (rs_available),
         .busy               (busy)
     );
 
@@ -321,7 +321,7 @@ module pipeline (
     );
 
     always_ff @( posedge clock ) begin
-        if (reset) begin
+        if (reset | CDB_packet.take_branch) begin
             ex_reg <= 0;
         end else begin
             ex_reg <= ex_packet;

@@ -65,7 +65,7 @@ module inst_buffer #(
             r_ptr <= 0;
             enable <= 0;
             ready <= 1;
-        end else if((r_en) && (!empty) && (read_phase == 0) && ready) begin
+        end else if((r_en) && (!empty) && (read_phase == 0)) begin
             r_data.valid <= buffer[r_ptr[ADDR-1:0]][0].valid;
             r_data.inst  <= buffer[r_ptr[ADDR-1:0]][0].inst;
             r_data.NPC   <= buffer[r_ptr[ADDR-1:0]][0].NPC;
@@ -73,7 +73,7 @@ module inst_buffer #(
             read_phase <= 1;
             enable <= 1;
             ready <= 0;
-        end else if((r_en) && (!empty) && (read_phase == 1) && ready) begin
+        end else if((r_en) && (!empty) && (read_phase == 1)) begin
             r_data.valid <= buffer[r_ptr[ADDR-1:0]][1].valid;
             r_data.inst  <= buffer[r_ptr[ADDR-1:0]][1].inst;
             r_data.NPC   <= buffer[r_ptr[ADDR-1:0]][1].NPC;

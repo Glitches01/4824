@@ -494,6 +494,8 @@ typedef struct packed {
 	FUNC_UNIT   func_unit;     // function unit
 
     logic [1:0] ready;
+    logic [1:0] received;
+    logic [1:0] needTag;
 } RS;
 
 

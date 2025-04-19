@@ -11,7 +11,7 @@ module complete (
     output logic [`XLEN-1:0] wb_regfile_data // register write data
 );
     logic [1:0] select;
-    logic valid, pos;
+    // logic valid, pos;
     always_comb begin
         case (select)
             default: begin
@@ -19,27 +19,27 @@ module complete (
                 cdb_packet.Value        = wb_regfile_data; 
                 cdb_packet.PC           = ex_reg.PC;     
 	            cdb_packet.NPC          = ex_reg.NPC;     
-	            cdb_packet.take_branch  = ex_reg.take_branch && valid;
+	            cdb_packet.take_branch  = ex_reg.take_branch && ex_reg.valid;
                 //cdb_packet.inst = ex_reg.inst;		
 	            cdb_packet.dest_reg_idx = ex_reg.dest_reg_idx;
 	            cdb_packet.halt         = 0;
                 cdb_packet.illegal      = 0;; 
 	            cdb_packet.done         = 0;
-	            cdb_packet.valid        = valid;
+	            cdb_packet.valid        = ex_reg.valid;
 	            cdb_packet.Tag          = ex_reg.Tag;
             end
         endcase
         
     end
 
-    assign valid = ~pos & ex_reg.valid;
-    always_ff @( posedge clock ) begin : posedge_detect
-        if (reset) begin
-            pos <= 0;
-        end else begin
-            pos <= ex_reg.valid;
-        end
-    end
+    // assign valid = ~pos & ex_reg.valid;
+    // always_ff @( posedge clock ) begin : posedge_detect
+    //     if (reset) begin
+    //         pos <= 0;
+    //     end else begin
+    //         pos <= ex_reg.valid;
+    //     end
+    // end
 
     // This enable computation is sort of overkill since the reg file
     // also handles the `ZERO_REG case, but there's no harm in putting this here
