@@ -68,21 +68,22 @@ module ReservationStation (
     // Control for reading from Instruction Buffer
     //
     ///////////////////////////////////////////////////
-    logic prev_read_enable;
-    wire rs_available = (!busy[0] || !busy[1] || 0) && !prev_read_enable;//todo to fast maybe gg
-
-    // 时序逻辑：生成 read_enable
-    always @(posedge clock) begin
-        if (reset) begin
-            read_enable      <= 1'b0;
-            prev_read_enable <= 1'b0;
-        end else begin
-            // 生成单周期脉冲
-            read_enable <= rs_available;
-            // 记录上一周期的读操作状态
-            prev_read_enable <= read_enable;
-        end
-    end
+    logic req_valid;
+    assign read_enable = req_valid;
+    // logic prev_read_enable;
+    // wire rs_available = (req_valid || 0) && !prev_read_enable;//todo to fast maybe gg
+    // // 时序逻辑：生成 read_enable
+    // always @(posedge clock) begin
+    //     if (reset) begin
+    //         read_enable      <= 1'b0;
+    //         prev_read_enable <= 1'b0;
+    //     end else begin
+    //         // 生成单周期脉冲
+    //         read_enable <= rs_available;
+    //         // 记录上一周期的读操作状态
+    //         prev_read_enable <= read_enable;
+    //     end
+    // end
 
     // ================================================================
     // gnt
@@ -93,7 +94,8 @@ module ReservationStation (
         .WIDTH(8)
     )u_priority_encoder(
         .req(req),
-        .gnt(gnt)
+        .gnt(gnt),
+        .valid(req_valid)
     );
 
 
