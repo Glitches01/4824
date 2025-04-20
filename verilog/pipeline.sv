@@ -185,6 +185,10 @@ module pipeline (
     CDB_PACKET              CDB_packet;      //todo
     EX_PACKET ex_reg;
     IF_IB_PACKET if_ib_packet[0:1];
+
+    logic [`XLEN-1:0] Branch_PC;
+    logic [`XLEN-1:0] Branch_Target;
+    logic take_branch;
     stage_if u_stage_if (
         // Inputs
         .clock                  (clock),
@@ -192,9 +196,9 @@ module pipeline (
 
         .if_valid               (1'b1),
 
-        .branch_pc              (CDB_packet.PC),
-        .take_branch            (CDB_packet.take_branch),
-        .branch_target          (ex_reg.alu_result),
+        .branch_pc              (Branch_PC),
+        .take_branch            (take_branch),
+        .branch_target          (Branch_Target),
 
         //To Icache
         .IF_Icache_packet       (IF_Icache_packet),
@@ -212,7 +216,7 @@ module pipeline (
     //////////////////////////////////////////////////
     IB_ID_PACKET ib_id_packet;
     logic rs_available;
-    logic [2:0] busy;
+    logic [7:0] busy;
     logic squash = 1'b0;//todo
     logic read_enable, enable;//todo
     logic available;//rob available
@@ -223,8 +227,8 @@ module pipeline (
         .clock                  (clock),
         .reset                  (reset),
 
-        .squash                 (CDB_packet.take_branch),
-        .branch_target          (ex_reg.alu_result),
+        .squash                 (take_branch),
+        .branch_target          (Branch_Target),
         .read_enable            (read_enable),//todo
         .ack                    (rs_mt_rob_enable),//todo
 
@@ -248,7 +252,7 @@ module pipeline (
     DP_RS_PACKET  dp_rs_packet;
     DP_ROB_PACKET dp_rob_packet;
     MT_ROB_PACKET mt_rob_packet;
-    assign rs_mt_rob_enable = dp_rs_packet.valid && available && ((!dp_rs_packet.mem && ((!busy[1]) || (!busy[0]))) || (dp_rs_packet.mem && !busy[2])) && enable;
+    assign rs_mt_rob_enable = dp_rs_packet.valid && available && ((!dp_rs_packet.mem && ((!busy[7]) || (!busy[6]) || (!busy[5]) || (!busy[4]) ||(!busy[3]) || (!busy[2]) || (!busy[1]) || (!busy[0]))) || (dp_rs_packet.mem && 0)) && enable;
     Dispatch u_Dispatch(
         .clock              (clock),
         .reset              (reset),
@@ -257,7 +261,7 @@ module pipeline (
         //input
         .ib_id_packet       (ib_id_packet),
         .rob_mt_packet      (rob_mt_packet),
-        .take_branch        (CDB_packet.take_branch),
+        .take_branch        (take_branch),
         //output
         .dp_rs_packet       (dp_rs_packet),
         .dp_rob_packet      (dp_rob_packet),
@@ -291,7 +295,11 @@ module pipeline (
         .available          (available),    // going to DP_stage
         .cp_rt_packet       (cp_rt_packet),    // going to retire stage
         .rob_rs_packet      (rob_rs_packet),  // going to RS
-        .rob_mt_packet      (rob_mt_packet)    // going to maptable
+        .rob_mt_packet      (rob_mt_packet),    // going to maptable
+
+        .Branch_PC          (Branch_PC),
+        .Branch_Target      (Branch_Target),
+        .take_branch        (take_branch)
     );
 
     //////////////////////////////////////////////////
@@ -309,6 +317,8 @@ module pipeline (
         .rob_rs_packet      (rob_rs_packet),
         .cdb_packet         (CDB_packet),
 
+        .take_branch        (take_branch),
+
         .rs_ex_packet       (rs_ex_packet),
         .read_enable        (rs_available),
         .busy               (busy)
@@ -321,7 +331,7 @@ module pipeline (
     );
 
     always_ff @( posedge clock ) begin
-        if (reset | CDB_packet.take_branch) begin
+        if (reset || take_branch) begin
             ex_reg <= 0;
         end else begin
             ex_reg <= ex_packet;
@@ -350,15 +360,15 @@ module pipeline (
     //                                              //
     //////////////////////////////////////////////////
 
-    assign pipeline_completed_insts = {3'b0, CDB_packet.valid}; // commit one valid instruction
+    assign pipeline_completed_insts = {3'b0, cp_rt_packet.rob_entry.cp_bit}; // commit one valid instruction
     // assign pipeline_error_status = mem_wb_reg.illegal        ? ILLEGAL_INST :
     //                                mem_wb_reg.halt           ? HALTED_ON_WFI :
     //                                (mem2proc_response==4'h0) ? LOAD_ACCESS_FAULT : NO_ERROR;
     assign pipeline_error_status = NO_ERROR;
 
-    assign pipeline_commit_wr_en   = wb_regfile_en;
-    assign pipeline_commit_wr_idx  = wb_regfile_idx;
-    assign pipeline_commit_wr_data = wb_regfile_data;
-    assign pipeline_commit_NPC     = CDB_packet.NPC;
+    assign pipeline_commit_wr_en   = cp_rt_packet.rob_entry.cp_bit;
+    assign pipeline_commit_wr_idx  = cp_rt_packet.rob_entry.reg_idx;
+    assign pipeline_commit_wr_data = cp_rt_packet.rob_entry.value;
+    assign pipeline_commit_NPC     = cp_rt_packet.rob_entry.NPC;
 
 endmodule // pipeline

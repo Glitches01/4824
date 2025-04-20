@@ -7,17 +7,18 @@ module ReservationStation (
     input   ROB_RS_PACKET   rob_rs_packet,
     input   CDB_PACKET      cdb_packet,
     // output rs_dp_packet rs_dp_packet,
+    input                   take_branch,
 
     output RS_EX_PACKET     rs_ex_packet,
     output logic            read_enable,
-    output [2:0]            busy
+    output [7:0]            busy
 );
 
     ////////////////////////////////////////////////
     //Get the Correct ready and rs_value from ROB MT DP
     //
     ///////////////////////////////////////////////
-    logic [`XLEN:0] rs1_value, rs2_value;
+    logic [`XLEN-1:0] rs1_value, rs2_value;
     logic [$clog2(`ROB_SIZE)-1:0]  Tag;
     logic [$clog2(`ROB_SIZE)-1:0]  RS1_Tag, RS2_Tag;
     logic ready[0:1];
@@ -62,13 +63,6 @@ module ReservationStation (
         end
     end
 
-    logic [1:0] gnt;
-    priority_encoder #(
-        .WIDTH(2)
-    )u_priority_encoder(
-        .req({!RS_Alu[1].busy,!RS_Alu[0].busy}),
-        .gnt(gnt)
-    );
 
     ///////////////////////////////////////////////////
     // Control for reading from Instruction Buffer
@@ -90,83 +84,124 @@ module ReservationStation (
         end
     end
 
-    RS RS_Alu[0:1];
-    logic [1:0] enable_alu;
-    assign enable_alu[0] = 1 && (!RS_Alu[0].busy) && dp_rs_packet.valid && !{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable && (gnt[0] == 1'b1);
-    assign busy[0] = RS_Alu[0].busy;
-    assign busy[1] = RS_Alu[1].busy;
-    assign busy[2] = RS_Mem.busy;
+    // ================================================================
+    // gnt
+    // ================================================================
+    logic [7:0] gnt;
+    wire  [7:0] req = {!RS_Alu[7].busy,!RS_Alu[6].busy,!RS_Alu[5].busy,!RS_Alu[4].busy,!RS_Alu[3].busy,!RS_Alu[2].busy,!RS_Alu[1].busy,!RS_Alu[0].busy};
+    priority_encoder #(
+        .WIDTH(8)
+    )u_priority_encoder(
+        .req(req),
+        .gnt(gnt)
+    );
 
-    logic [2:0] gnt_rs;
+
+    ////////////////////////////////////////////////////////////////////
+    //  RS
+    //
+    ////////////////////////////////////////////////////////////////////
+    //assign busy[2] = RS_Mem.busy;todo
+
+    RS RS_Alu[0:7];
+    logic [7:0] enable_alu;
+    logic [7:0] gnt_rs;
+    logic issue, issue_mem;
+    logic [7:0] issue_alu;
+    assign issue_alu1 = RS_Alu[0].ready[0] && RS_Alu[0].ready[1];
+    assign issue_alu2 = RS_Alu[1].ready[0] && RS_Alu[1].ready[1];
+    // assign issue_mem  = RS_Mem.ready[0] && RS_Mem.ready[1];todo
+    // ================================================================
+    // 生成 8 个保留站实例
+    // ================================================================
+    genvar i;
+    generate
+      for (i = 0; i < 8; i = i + 1) begin : gen_reservation_stations
+        assign enable_alu[i] = 1 && (!RS_Alu[i].busy) && dp_rs_packet.valid && !{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable && (gnt[i] == 1'b1);
+        assign busy[i] = RS_Alu[i].busy;
+        assign issue_alu[i] = RS_Alu[i].ready[0] && RS_Alu[i].ready[1];
+        ResSta u_RS (
+            .clock       (clock),
+            .reset       (reset),
+
+            // 冲刷信号（共享）
+            .flush       (take_branch),
+            //.flush       (1'b0),
+            // 使能信号按索引分配（例如 enable_alu[0] ~ enable_alu[7]）
+            .enable      (enable_alu[i]),
+
+            // 输入数据包（假设广播共享）
+            .dp_rs_packet(dp_rs_packet),
+
+            // Tag 信号按索引分配（假设 Tag 是向量）
+            .RS1_Tag     (RS1_Tag),
+            .RS2_Tag     (RS2_Tag),
+            .Tag         (Tag),
+            .needTag     (needTag),
+
+            // 操作数值（按索引分配）
+            .rs1_value   (rs1_value),
+            .rs2_value   (rs2_value),
+
+            // 就绪信号（按索引输出）
+            .ready       (ready),
+
+            // CDB 广播（共享）
+            .cdb_packet  (cdb_packet),
+
+            // 仲裁授权信号（按索引分配）
+            .issue       (gnt_rs[i]),  // 例如 gnt_rs[0] ~ gnt_rs[7]
+
+            // 输出到执行单元（按索引分配）
+            .rs          (RS_Alu[i])   // 例如 RS_Alu[0] ~ RS_Alu[7]
+        );
+      end
+    endgenerate
+
     //assign rs_available = |{!busy[0], !busy[1], 0};
-    ResSta u_RS0(
-        .clock(clock),
-        .reset(reset),
+    // ResSta u_RS0(
+    //     .clock(clock),
+    //     .reset(reset),
 
-        .flush(cdb_packet.take_branch),
-        .enable(enable_alu[0]),
-        .dp_rs_packet(dp_rs_packet),
-        .RS1_Tag(RS1_Tag),.RS2_Tag(RS2_Tag),.Tag(Tag),.needTag(needTag),
-        .rs1_value(rs1_value),.rs2_value(rs2_value),
+    //     .flush(cdb_packet.take_branch),
+    //     .enable(enable_alu[0]),
+    //     .dp_rs_packet(dp_rs_packet),
+    //     .RS1_Tag(RS1_Tag),.RS2_Tag(RS2_Tag),.Tag(Tag),.needTag(needTag),
+    //     .rs1_value(rs1_value),.rs2_value(rs2_value),
 
-        .ready(ready),
-        .cdb_packet(cdb_packet),
+    //     .ready(ready),
+    //     .cdb_packet(cdb_packet),
 
-        .issue(gnt_rs[2]),
-
-
-
-
-        //output for issue
-        .rs(RS_Alu[0])
-    );
-
-    assign enable_alu[1] = 1 && (!RS_Alu[1].busy) && dp_rs_packet.valid && !{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable && (gnt[1] == 1'b1);
-    ResSta u_RS1(
-        .clock(clock),
-        .reset(reset),
-
-        .flush(cdb_packet.take_branch),
-        .enable(enable_alu[1]),
-        .dp_rs_packet(dp_rs_packet),
-        .RS1_Tag(RS1_Tag),.RS2_Tag(RS2_Tag),.Tag(Tag),
-        .rs1_value(rs1_value),.rs2_value(rs2_value),
-
-        .ready(ready),
-        .cdb_packet(cdb_packet),
-
-        .issue(gnt_rs[1]),
-
-
-
-        //output for issue
-        .rs(RS_Alu[1])
-    );
-
-    RS RS_Mem;
-    logic enable_mem;
-    assign enable_mem = 1 && (!RS_Mem.busy) && dp_rs_packet.valid && |{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable;
-    ResSta u_RS_MEM(
-        .clock(clock),
-        .reset(reset),
-
-        .flush(cdb_packet.take_branch),
-        .enable(enable_mem),
-        .dp_rs_packet(dp_rs_packet),
-        .RS1_Tag(RS1_Tag),.RS2_Tag(RS2_Tag),.Tag(Tag),
-        .rs1_value(rs1_value),.rs2_value(rs2_value),
-
-        .ready(ready),
-        .cdb_packet(cdb_packet),
-
-        .issue(gnt_rs[0]),
+    //     .issue(gnt_rs[2]),
 
 
 
 
-        //output for issue
-        .rs(RS_Mem)
-    );
+    //     //output for issue
+    //     .rs(RS_Alu[0])
+    // );
+
+
+    // RS RS_Mem;
+    // logic enable_mem;
+    // assign enable_mem = 1 && (!RS_Mem.busy) && dp_rs_packet.valid && |{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable;
+    // ResSta u_RS_MEM(
+    //     .clock(clock),
+    //     .reset(reset),
+
+    //     .flush(cdb_packet.take_branch),
+    //     .enable(enable_mem),
+    //     .dp_rs_packet(dp_rs_packet),
+    //     .RS1_Tag(RS1_Tag),.RS2_Tag(RS2_Tag),.Tag(Tag),
+    //     .rs1_value(rs1_value),.rs2_value(rs2_value),
+
+    //     .ready(ready),
+    //     .cdb_packet(cdb_packet),
+
+    //     .issue(gnt_rs[0]),
+    //     //output for issue
+    //     .rs(RS_Mem)
+    // );
 
 
     /////////////////////////////////////////////////////
@@ -174,52 +209,48 @@ module ReservationStation (
     //
     /////////////////////////////////////////////////////
     RS RS_issue;
-    logic issue, issue_alu1, issue_alu2, issue_mem;
-    assign issue_alu1 = RS_Alu[0].ready[0] && RS_Alu[0].ready[1];
-    assign issue_alu2 = RS_Alu[1].ready[0] && RS_Alu[1].ready[1];
-    assign issue_mem  = RS_Mem.ready[0] && RS_Mem.ready[1];
     // assign issue = |{issue_alu1, issue_alu2, issue_mem};
 
     priority_encoder #(
-        .WIDTH(3)
+        .WIDTH(8)
     )u_priority_encoder_rs(
-        .req({issue_alu1,issue_alu2,issue_mem}),
+        .req(issue_alu),
         .gnt(gnt_rs),
         .valid(issue)
     );
 
     always_comb begin
         case (gnt_rs)
-            3'b100: begin
-                RS_issue = RS_Alu[0];
+            8'b10000000: begin
+                RS_issue = RS_Alu[7];
             end
-            3'b010: begin
+            8'b01000000: begin
+                RS_issue = RS_Alu[6];
+            end
+            8'b00100000: begin
+                RS_issue = RS_Alu[5];
+            end
+            8'b00010000: begin
+                RS_issue = RS_Alu[4];
+            end
+            8'b00001000: begin
+                RS_issue = RS_Alu[3];
+            end
+            8'b00000100: begin
+                RS_issue = RS_Alu[2];
+            end
+            8'b00000010: begin
                 RS_issue = RS_Alu[1];
             end
-            3'b001: begin
-                RS_issue = RS_Mem;
+            8'b00000001: begin
+                RS_issue = RS_Alu[0];
             end
             default: RS_issue = 0;
         endcase
     end
 
-    // always_comb begin
-    //     case (1'b1)
-    //         issue_alu1: begin
-    //             RS_issue = RS_Alu[0];
-    //         end
-    //         issue_alu2: begin
-    //             RS_issue = RS_Alu[1];
-    //         end
-    //         issue_mem: begin
-    //             RS_issue = RS_Mem;
-    //         end
-    //         default: RS_issue = 0;
-    //     endcase
-    // end
-
     always_ff @( posedge clock ) begin
-        if(reset || cdb_packet.take_branch) begin
+        if(reset) begin
             rs_ex_packet <= 0;
         end else if (issue) begin
             rs_ex_packet.inst           <= RS_issue.inst;

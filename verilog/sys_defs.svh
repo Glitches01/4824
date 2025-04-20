@@ -416,6 +416,8 @@ typedef struct packed {
 	logic             	halt, illegal; // ??
 	logic             	valid;    	// enable=0 cdb=1todo
     logic               wr_mem; 		// ??
+    logic               CantComplete;
+    logic [`XLEN-1:0]   alu_result;  // alu_result
 } ROB_ENTRY;
 
 
@@ -456,6 +458,7 @@ typedef struct packed {
 	logic             done;
 	logic             valid;
 	logic [`ROB_ADDR_BITS-1:0]  Tag;  // #ROB
+    logic [`XLEN-1:0] alu_result;  // alu_result
 } CDB_PACKET;
 
 typedef enum logic [1:0] {

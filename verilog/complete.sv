@@ -27,6 +27,7 @@ module complete (
 	            cdb_packet.done         = 0;
 	            cdb_packet.valid        = ex_reg.valid;
 	            cdb_packet.Tag          = ex_reg.Tag;
+                cdb_packet.alu_result   = ex_reg.alu_result;
             end
         endcase
         

@@ -65,6 +65,7 @@ module inst_buffer #(
             r_ptr <= 0;
             enable <= 0;
             ready <= 1;
+            r_data <= 0;
         end else if((r_en) && (!empty) && (read_phase == 0)) begin
             r_data.valid <= buffer[r_ptr[ADDR-1:0]][0].valid;
             r_data.inst  <= buffer[r_ptr[ADDR-1:0]][0].inst;

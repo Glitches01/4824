@@ -14,8 +14,13 @@ module ROB (
     output      logic           available,    //todo
     output      CP_RT_PACKET    cp_rt_packet,   //todo
     output      ROB_RS_PACKET   rob_rs_packet,  
-    output      ROB_MT_PACKET   rob_mt_packet
-);
+    output      ROB_MT_PACKET   rob_mt_packet,
+
+
+    output logic [`XLEN-1:0] Branch_PC,
+    output logic [`XLEN-1:0] Branch_Target,
+    output logic take_branch
+);//todotodotodo every tag by default is 0, have to change
 
     ROB_ENTRY   ROB_content   [`ROB_SIZE-1:0];
     ROB_ENTRY   ROB_content_n [`ROB_SIZE-1:0];
@@ -31,14 +36,15 @@ module ROB (
         for (integer unsigned j = 0; j < `ROB_SIZE; j = j + 1)
             ROB_content_n[j] = ROB_content[j];
 
-        if (CDB_packet_in.valid) begin
-            ROB_content_n[CDB_packet_in.Tag].inst    = CDB_packet_in.inst;
-            ROB_content_n[CDB_packet_in.Tag].value   = CDB_packet_in.Value;
-            ROB_content_n[CDB_packet_in.Tag].cp_bit  = 1'b1;
-            ROB_content_n[CDB_packet_in.Tag].ep_bit  = CDB_packet_in.take_branch;
-            ROB_content_n[CDB_packet_in.Tag].NPC     = CDB_packet_in.NPC;
-            ROB_content_n[CDB_packet_in.Tag].PC      = CDB_packet_in.PC;
-            ROB_content_n[CDB_packet_in.Tag].valid   = CDB_packet_in.valid;
+        if (CDB_packet_in.valid && (ROB_content[CDB_packet_in.Tag].PC == CDB_packet_in.PC)) begin
+            ROB_content_n[CDB_packet_in.Tag].inst           = CDB_packet_in.inst;
+            ROB_content_n[CDB_packet_in.Tag].value          = CDB_packet_in.Value;
+            ROB_content_n[CDB_packet_in.Tag].alu_result     = CDB_packet_in.alu_result;//todo
+            ROB_content_n[CDB_packet_in.Tag].cp_bit         = 1'b1;
+            ROB_content_n[CDB_packet_in.Tag].ep_bit         = CDB_packet_in.take_branch;
+            ROB_content_n[CDB_packet_in.Tag].NPC            = CDB_packet_in.NPC;
+            ROB_content_n[CDB_packet_in.Tag].PC             = CDB_packet_in.PC;
+            ROB_content_n[CDB_packet_in.Tag].valid          = CDB_packet_in.valid;
         end
 
 
@@ -63,13 +69,18 @@ module ROB (
                     ROB_content_n[k].NPC     = dp_rob_packet.NPC;
                     ROB_content_n[k].cp_bit  = 1'b0;
                     ROB_content_n[k].valid   = 1'b0;
+                    // ROB_content_n[k].CantComplete = 1'b0;
                 end
             end
-        end if (ROB_content[head_idx].cp_bit) begin  //todo should i complete/cp parallel priority with enbale? or enable first
+        end 
+        
+        if (ROB_content[head_idx].cp_bit) begin  //todo should i complete/cp parallel priority with enbale? or enable first
             ROB_content_n[head_idx].cp_bit = 1'b0;
             if (ROB_content[head_idx].ep_bit) begin//todo roll-back
                 ROB_content_n[head_idx].ep_bit = 1'b0;
                 tail_n = head + 1;
+                //ROB_content_n[head + 1].CantComplete = 1'b1;
+                ROB_content_n[head_idx + 1] = 0;
             end
             head_n = head + 1;
         end else begin
@@ -113,14 +124,14 @@ module ROB (
         rob_rs_packet.complete[0] = ROB_content[mt_rob_packet.RegS1_Tag].valid;
         rob_rs_packet.complete[1] = ROB_content[mt_rob_packet.RegS2_Tag].valid;
 
-        if (CDB_packet_in.valid && CDB_packet_in.Tag == mt_rob_packet.RegS1_Tag) begin
+        if (CDB_packet_in.valid && (CDB_packet_in.Tag == mt_rob_packet.RegS1_Tag) && mt_rob_packet.valid_vector[0]) begin
             rob_rs_packet.rs1_value = CDB_packet_in.Value;
             rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
             rob_rs_packet.valid_vector[0] = 1'b1; 
             rob_rs_packet.complete[0] = 1'b1;
         end
 
-        if (CDB_packet_in.valid && CDB_packet_in.Tag == mt_rob_packet.RegS2_Tag) begin
+        if (CDB_packet_in.valid && (CDB_packet_in.Tag == mt_rob_packet.RegS2_Tag) && mt_rob_packet.valid_vector[1]) begin
             rob_rs_packet.rs2_value = CDB_packet_in.Value;
             rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
             rob_rs_packet.valid_vector[1] = 1'b1; 
@@ -142,6 +153,10 @@ module ROB (
     //for retire
     assign cp_rt_packet.rob_entry = ROB_content[head_idx];
     assign cp_rt_packet.Tag       = head_idx;
+
+    assign Branch_PC = ROB_content[head_idx].PC;
+    assign Branch_Target = ROB_content[head_idx].alu_result;
+    assign take_branch = ROB_content[head_idx].ep_bit;
 
     //for full? rob_entry_available
     logic [$clog2(`ROB_SIZE)-1:0] next_tail;
