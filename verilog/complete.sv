@@ -22,8 +22,8 @@ module complete (
 	            cdb_packet.take_branch  = ex_reg.take_branch && ex_reg.valid;
                 //cdb_packet.inst = ex_reg.inst;		
 	            cdb_packet.dest_reg_idx = ex_reg.dest_reg_idx;
-	            cdb_packet.halt         = 0;
-                cdb_packet.illegal      = 0;; 
+	            cdb_packet.halt         = ex_reg.halt;
+                cdb_packet.illegal      = ex_reg.illegal;
 	            cdb_packet.done         = 0;
 	            cdb_packet.valid        = ex_reg.valid;
 	            cdb_packet.Tag          = ex_reg.Tag;

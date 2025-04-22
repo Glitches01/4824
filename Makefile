@@ -542,6 +542,20 @@ novas.rc: initialnovas.rc
 .PHONY: %.verdi
 
 #############################
+# ---- Compare         ---- #
+#############################
+%.compare: ./output/%.wb ./ref_output/%.wb
+	@echo "[CHECK] 正在对比 $*.wb..."
+	@if diff -q $^ >/dev/null; then \
+		echo "  PASS: 文件内容一致"; \
+	else \
+		echo "  FAIL: 文件内容不同"; \
+		diff -u $^ || true; \
+		exit 1; \
+	fi
+
+
+#############################
 # ---- Visual Debugger ---- #
 #############################
 

@@ -371,12 +371,13 @@ module pipeline (
     //////////////////////////////////////////////////
 
     assign pipeline_completed_insts = {3'b0, cp_rt_packet.rob_entry.cp_bit}; // commit one valid instruction
-    // assign pipeline_error_status = mem_wb_reg.illegal        ? ILLEGAL_INST :
-    //                                mem_wb_reg.halt           ? HALTED_ON_WFI :
-    //                                (mem2proc_response==4'h0) ? LOAD_ACCESS_FAULT : NO_ERROR;
-    assign pipeline_error_status = NO_ERROR;
+    assign pipeline_error_status = cp_rt_packet.rob_entry.illegal        ? ILLEGAL_INST :
+                                   cp_rt_packet.rob_entry.halt           ? HALTED_ON_WFI :
+                                //    (mem2proc_response==4'h0) ? LOAD_ACCESS_FAULT : NO_ERROR;
+                                    (mem2proc_response==4'h0) ? NO_ERROR : NO_ERROR;
+    // assign pipeline_error_status = NO_ERROR;
 
-    assign pipeline_commit_wr_en   = cp_rt_packet.rob_entry.cp_bit;
+    assign pipeline_commit_wr_en   = cp_rt_packet.rob_entry.cp_bit && (cp_rt_packet.rob_entry.reg_idx != 5'h0);
     assign pipeline_commit_wr_idx  = cp_rt_packet.rob_entry.reg_idx;
     assign pipeline_commit_wr_data = cp_rt_packet.rob_entry.value;
     assign pipeline_commit_NPC     = cp_rt_packet.rob_entry.NPC;

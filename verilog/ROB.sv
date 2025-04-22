@@ -41,7 +41,7 @@ module ROB (
             tail_n = tail;
             head_n = head;
 
-        if (CDB_packet_in.valid && (ROB_content[CDB_packet_in.Tag].PC == CDB_packet_in.PC)) begin
+        if (CDB_packet_in.valid && (ROB_content[CDB_packet_in.Tag].PC == CDB_packet_in.PC) && !Branch_Miss) begin
             ROB_content_n[CDB_packet_in.Tag].inst           = CDB_packet_in.inst;
             ROB_content_n[CDB_packet_in.Tag].value          = CDB_packet_in.Value;
             ROB_content_n[CDB_packet_in.Tag].alu_result     = CDB_packet_in.alu_result;//todo
@@ -50,6 +50,8 @@ module ROB (
             ROB_content_n[CDB_packet_in.Tag].NPC            = CDB_packet_in.NPC;
             ROB_content_n[CDB_packet_in.Tag].PC             = CDB_packet_in.PC;
             ROB_content_n[CDB_packet_in.Tag].valid          = CDB_packet_in.valid;
+            ROB_content_n[CDB_packet_in.Tag].halt           = CDB_packet_in.halt;
+            ROB_content_n[CDB_packet_in.Tag].illegal        = CDB_packet_in.illegal;
         end
 
 
