@@ -50,7 +50,7 @@ module icache (
     output logic [`XLEN-1:0] proc2Imem_addr,
 
     // To fetch stage
-    output logic [31:0] Icache_data_out, // Data is mem[proc2Icache_addr]
+    output logic [63:0] Icache_data_out, // Data is mem[proc2Icache_addr]
     output logic        Icache_valid_out // When valid is high
 );
 
@@ -65,17 +65,8 @@ module icache (
     logic [`CACHE_LINE_BITS - 1:0] current_index, last_index;
 
     assign {current_tag, current_index} = proc2Icache_addr[15:3];
-    wire offset = proc2Icache_addr[2];
-    always_comb begin
-        if(offset) begin
-            Icache_data_out = icache_data[current_index].data[63:32];
-        end else begin
-            Icache_data_out = icache_data[current_index].data[31:0];
-        end
-    end
-    // assign Icache_data_out = icache_data[current_index].data;
 
-
+    assign Icache_data_out = icache_data[current_index].data;
     assign Icache_valid_out = icache_data[current_index].valid &&
                               (icache_data[current_index].tags == current_tag);
 

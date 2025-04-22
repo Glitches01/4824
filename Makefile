@@ -326,7 +326,7 @@ TESTBENCH = test/pipeline_test.sv \
 # you could simplify this line with $(wildcard verilog/*.sv) - but the manual way is more explicit
 SOURCES = verilog/pipeline.sv \
           verilog/icache.sv \
-		  verilog/stage_if.sv \
+		  verilog/fetch.sv \
 		  verilog/inst_buffer.sv \
 		  verilog/Dispatch.sv \
 		  verilog/RS.sv \

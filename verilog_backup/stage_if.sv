@@ -19,8 +19,6 @@ module stage_if (
     input [`XLEN-1:0]               branch_pc,
     input                           take_branch,    // taken-branch signal
     input [`XLEN-1:0]               branch_target,  // target pc: use if take_branch is TRUE
-    input                           IsBranch,
-    input                           Branch_Miss,
 
 	//From ICache
 	input  ICACHE_IF_PACKET         Icache_IF_packet,

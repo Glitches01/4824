@@ -19,9 +19,7 @@ module ROB (
 
     output logic [`XLEN-1:0] Branch_PC,
     output logic [`XLEN-1:0] Branch_Target,
-    output logic take_branch,
-    output logic IsBranch,
-    output logic Branch_Miss//todo
+    output logic take_branch
 );//todotodotodo every tag by default is 0, have to change
 
     ROB_ENTRY   ROB_content   [`ROB_SIZE-1:0];
@@ -37,9 +35,6 @@ module ROB (
     always_comb begin
         for (integer unsigned j = 0; j < `ROB_SIZE; j = j + 1)
             ROB_content_n[j] = ROB_content[j];
-
-            tail_n = tail;
-            head_n = head;
 
         if (CDB_packet_in.valid && (ROB_content[CDB_packet_in.Tag].PC == CDB_packet_in.PC)) begin
             ROB_content_n[CDB_packet_in.Tag].inst           = CDB_packet_in.inst;
@@ -63,6 +58,7 @@ module ROB (
         end else begin
             rob_rs_packet.Tag = tail_idx;//todo
             rob_mt_packet.Tag = tail_idx;//todo have changed
+            tail_n = tail;
         end
 
         if (enable) begin
@@ -73,7 +69,6 @@ module ROB (
                     ROB_content_n[k].NPC     = dp_rob_packet.NPC;
                     ROB_content_n[k].cp_bit  = 1'b0;
                     ROB_content_n[k].valid   = 1'b0;
-                    ROB_content_n[k].IsBranch= dp_rob_packet.IsBranch;
                     // ROB_content_n[k].CantComplete = 1'b0;
                 end
             end
@@ -81,14 +76,16 @@ module ROB (
         
         if (ROB_content[head_idx].cp_bit) begin  //todo should i complete/cp parallel priority with enbale? or enable first
             ROB_content_n[head_idx].cp_bit = 1'b0;
-            if (ROB_content[head_idx].IsBranch) begin//todo roll-back
+            if (ROB_content[head_idx].ep_bit) begin//todo roll-back
                 ROB_content_n[head_idx].ep_bit = 1'b0;
-                if (Branch_Miss) begin
-                    tail_n = head + 1;
-                    ROB_content_n[head_idx + 1] = 0;
-                end
+                tail_n = head + 1;
+                //ROB_content_n[head + 1].CantComplete = 1'b1;
+                ROB_content_n[head_idx + 1] = 0;
             end
             head_n = head + 1;
+        end else begin
+            head_n = head;
+            tail_n = tail_n;
         end
 
         // if (enable) begin
@@ -157,13 +154,9 @@ module ROB (
     assign cp_rt_packet.rob_entry = ROB_content[head_idx];
     assign cp_rt_packet.Tag       = head_idx;
 
-    assign Branch_PC     = ROB_content[head_idx].PC;
-    assign Branch_Target = take_branch? ROB_content[head_idx].alu_result : Branch_PC +4;
-    assign take_branch   = ROB_content[head_idx].ep_bit;
-    assign IsBranch      = ROB_content[head_idx].IsBranch;
-
-    assign Branch_Miss   = (ROB_content[head_idx].ep_bit && (Branch_Target != ROB_content[head_idx].NPC)) 
-                                    || (ROB_content[head_idx].IsBranch && !ROB_content[head_idx].ep_bit && (ROB_content[head_idx].NPC != (ROB_content[head_idx].PC + 4)));
+    assign Branch_PC = ROB_content[head_idx].PC;
+    assign Branch_Target = ROB_content[head_idx].alu_result;
+    assign take_branch = ROB_content[head_idx].ep_bit;
 
     //for full? rob_entry_available
     logic [$clog2(`ROB_SIZE)-1:0] next_tail;

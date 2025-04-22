@@ -132,7 +132,6 @@ module Dispatch (
     assign dp_rob_packet.dest_reg_idx   = dp_rs_packet.dest_reg_idx;
     assign dp_rob_packet.PC             = dp_rs_packet.PC;
     assign dp_rob_packet.NPC            = dp_rs_packet.NPC;
-    assign dp_rob_packet.IsBranch       = (dp_rs_packet.cond_branch || dp_rs_packet.uncond_branch);
 
     MAPTABLE rob_entry1;
     MAPTABLE rob_entry2;

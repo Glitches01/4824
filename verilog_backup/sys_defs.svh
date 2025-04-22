@@ -316,7 +316,7 @@ typedef struct packed {
 
 
  typedef struct packed {
-	logic [31:0] Icache_data_out;
+	logic [63:0] Icache_data_out;
 	// logic             Icache_hit;
 	logic             Icache_valid_out;
 } ICACHE_IF_PACKET;
@@ -331,33 +331,9 @@ typedef struct packed {
 } IF_ICACHE_PACKET;
 
 
-//////////////////////////////////////////////
-//
-// PHT section
-//
-//////////////////////////////////////////////
 
-`define H_SIZE 8
-`define PHT_SIZE 32
 
-//////////////////////////////////////////////
-//
-// BHT section
-//
-//////////////////////////////////////////////
-   
-`define BHT_SIZE 32
-`define BHT_WIDTH $clog2(`H_SIZE)//3
 
-//////////////////////////////////////////////
-//
-// BTB section
-//
-//////////////////////////////////////////////
-
-`define BTB_SIZE 32
-`define TAG_SIZE 10
-`define VAL_SIZE 12
 
 
 
@@ -424,7 +400,6 @@ typedef struct packed {
     logic [4:0]         dest_reg_idx;  // destination (writeback) register index
     logic [`XLEN-1:0]   PC;
     logic [`XLEN-1:0]   NPC;
-    logic IsBranch;
 } DP_ROB_PACKET;
 
 
@@ -443,7 +418,6 @@ typedef struct packed {
     logic               wr_mem; 		// ??
     logic               CantComplete;
     logic [`XLEN-1:0]   alu_result;  // alu_result
-    logic               IsBranch;
 } ROB_ENTRY;
 
 

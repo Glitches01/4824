@@ -184,24 +184,21 @@ module pipeline (
     EX_PACKET ex_packet;
     CDB_PACKET              CDB_packet;      //todo
     EX_PACKET ex_reg;
-    IF_IB_PACKET if_ib_packet;
+    IF_IB_PACKET if_ib_packet[0:1];
 
-    logic [`XLEN-1:0] Branch_PC, PredictionPC;
+    logic [`XLEN-1:0] Branch_PC;
     logic [`XLEN-1:0] Branch_Target;
-    logic take_branch, IsBranch, Branch_Miss, predict_taken, IsFull;
+    logic take_branch;
     stage_if u_stage_if (
         // Inputs
         .clock                  (clock),
         .reset                  (reset),
 
         .if_valid               (1'b1),
-        .IsFull                 (IsFull),
 
         .branch_pc              (Branch_PC),
-        .IsBranch               (IsBranch),
         .take_branch            (take_branch),
         .branch_target          (Branch_Target),
-        .Branch_Miss            (Branch_Miss),
 
         //To Icache
         .IF_Icache_packet       (IF_Icache_packet),
@@ -210,8 +207,6 @@ module pipeline (
 
 
         .if_ib_packet           (if_ib_packet)
-        // .PredictionPC           (PredictionPC),
-        // .predict_taken          (predict_taken)
     );
 
     //////////////////////////////////////////////////
@@ -232,18 +227,15 @@ module pipeline (
         .clock                  (clock),
         .reset                  (reset),
 
-        .squash                 (Branch_Miss),
+        .squash                 (take_branch),
         .branch_target          (Branch_Target),
         .read_enable            (read_enable),//todo
         .ack                    (rs_mt_rob_enable),//todo
 
         .if_ib_packet           (if_ib_packet),
-        // .PredictionPC           (PredictionPC),
-        // .predict_taken          (predict_taken),
 
         .enable                 (enable),
-        .ib_id_packet           (ib_id_packet),
-        .IsFull                 (IsFull)
+        .ib_id_packet           (ib_id_packet)
     );
 
     //////////////////////////////////////////////////
@@ -269,7 +261,7 @@ module pipeline (
         //input
         .ib_id_packet       (ib_id_packet),
         .rob_mt_packet      (rob_mt_packet),
-        .take_branch        (Branch_Miss),
+        .take_branch        (take_branch),
         //output
         .dp_rs_packet       (dp_rs_packet),
         .dp_rob_packet      (dp_rob_packet),
@@ -307,9 +299,7 @@ module pipeline (
 
         .Branch_PC          (Branch_PC),
         .Branch_Target      (Branch_Target),
-        .take_branch        (take_branch),
-        .IsBranch           (IsBranch),
-        .Branch_Miss        (Branch_Miss)
+        .take_branch        (take_branch)
     );
 
     //////////////////////////////////////////////////
@@ -327,7 +317,7 @@ module pipeline (
         .rob_rs_packet      (rob_rs_packet),
         .cdb_packet         (CDB_packet),
 
-        .take_branch        (Branch_Miss),
+        .take_branch        (take_branch),
 
         .rs_ex_packet       (rs_ex_packet),
         .read_enable        (rs_available),
@@ -341,7 +331,7 @@ module pipeline (
     );
 
     always_ff @( posedge clock ) begin
-        if (reset || Branch_Miss) begin
+        if (reset || take_branch) begin
             ex_reg <= 0;
         end else begin
             ex_reg <= ex_packet;
