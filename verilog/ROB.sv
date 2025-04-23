@@ -11,6 +11,8 @@ module ROB (
     input                       enable,//enable for allocating the entry
     input       MT_ROB_PACKET   mt_rob_packet,   
 
+    input       CDB_PACKET      lsq_input,
+
     output      logic           available,    //todo
     output      CP_RT_PACKET    cp_rt_packet,   //todo
     output      ROB_RS_PACKET   rob_rs_packet,  
@@ -52,6 +54,19 @@ module ROB (
             ROB_content_n[CDB_packet_in.Tag].valid          = CDB_packet_in.valid;
             ROB_content_n[CDB_packet_in.Tag].halt           = CDB_packet_in.halt;
             ROB_content_n[CDB_packet_in.Tag].illegal        = CDB_packet_in.illegal;
+        end
+
+        if (lsq_input.valid && (ROB_content[lsq_input.Tag].PC == lsq_input.PC) && !Branch_Miss) begin
+            ROB_content_n[lsq_input.Tag].inst           = lsq_input.inst;
+            ROB_content_n[lsq_input.Tag].value          = lsq_input.Value;
+            ROB_content_n[lsq_input.Tag].alu_result     = 0;//todo
+            ROB_content_n[lsq_input.Tag].cp_bit         = 1'b1;
+            ROB_content_n[lsq_input.Tag].ep_bit         = 0;
+            ROB_content_n[lsq_input.Tag].NPC            = lsq_input.NPC;
+            ROB_content_n[lsq_input.Tag].PC             = lsq_input.PC;
+            ROB_content_n[lsq_input.Tag].valid          = lsq_input.valid;
+            ROB_content_n[lsq_input.Tag].halt           = 0;
+            ROB_content_n[lsq_input.Tag].illegal        = 0;
         end
 
 

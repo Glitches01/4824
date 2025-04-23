@@ -331,6 +331,8 @@ SOURCES = verilog/pipeline.sv \
 		  verilog/Dispatch.sv \
 		  verilog/RS.sv \
 		  verilog/execute.sv \
+		  verilog/lsq.sv \
+		  verilog/dcache.sv \
 		  verilog/complete.sv \
 		  verilog/ROB.sv
 

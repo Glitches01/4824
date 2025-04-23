@@ -34,6 +34,7 @@ module Dispatch (
     //input  RS_DP_PACKET rs_dp_packet,
     //To RS
     output DP_RS_PACKET  dp_rs_packet,
+    output DP_LSQ_PACKET dp_lsq_packet,
 
     output DP_ROB_PACKET dp_rob_packet,
 
@@ -45,7 +46,15 @@ module Dispatch (
 
 );
 
-
+    always_comb begin
+        dp_lsq_packet.inst          = dp_rs_packet.inst;
+        dp_lsq_packet.PC            = dp_rs_packet.PC;
+        dp_lsq_packet.NPC           = dp_rs_packet.NPC;
+        dp_lsq_packet.dest_reg_idx  = dp_rs_packet.dest_reg_idx;
+        dp_lsq_packet.rd_mem        = dp_rs_packet.rd_mem;
+        dp_lsq_packet.wr_mem        = dp_rs_packet.wr_mem;
+        dp_lsq_packet.Tag           = rob_mt_packet.Tag;
+    end
 /////////////////////////////////////////////////////////////////////////
 //                                                                     //
 //  Instance Name :  u_regfile                                         //
@@ -142,8 +151,10 @@ module Dispatch (
     assign mt_rob_packet.valid_vector[1] = rob_entry2.valid;
 
     logic [4:0] mt_read_idx_1, mt_read_idx_2;
-    assign mt_read_idx_1 = (dp_rs_packet.opa_select == 2'h0)? ib_id_packet.inst.r.rs1:5'h0;
-    assign mt_read_idx_2 = (dp_rs_packet.opb_select == 4'h0)? ib_id_packet.inst.r.rs2:5'h0;
+    // assign mt_read_idx_1 = (dp_rs_packet.opa_select == 2'h0)? ib_id_packet.inst.r.rs1:5'h0;//todo
+    // assign mt_read_idx_2 = (dp_rs_packet.opb_select == 4'h0)? ib_id_packet.inst.r.rs2:5'h0;
+    assign mt_read_idx_1 = ib_id_packet.inst.r.rs1;
+    assign mt_read_idx_2 = ib_id_packet.inst.r.rs2;
     MapTable u_MapTable(
         .clock              (clock),
         .reset              (reset),

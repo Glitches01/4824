@@ -416,6 +416,18 @@ typedef struct packed {
 } DP_RS_PACKET;
 
 `define ROB_SIZE 32
+`define ROB_ADDR_BITS $clog2(`ROB_SIZE)
+typedef struct packed {
+    INST                        inst;
+    logic [`XLEN-1:0]           PC;
+    logic [`XLEN-1:0]           NPC; // PC + 4
+    logic [4:0]                 dest_reg_idx;  // destination (writeback) register index
+    logic                       rd_mem;        // Does inst read memory?
+    logic                       wr_mem;        // Does inst write memory?
+	logic [`ROB_ADDR_BITS-1:0]  Tag;  // #ROB
+} DP_LSQ_PACKET;
+
+
  typedef struct packed {
 	logic                            valid; // If low, the data in this struct is garbage
     logic [$clog2(`ROB_SIZE)-1:0]    rob_entry;//4:0
@@ -447,7 +459,6 @@ typedef struct packed {
 } ROB_ENTRY;
 
 
-`define ROB_ADDR_BITS $clog2(`ROB_SIZE)
 typedef struct packed {
 	ROB_ENTRY		  			rob_entry;
 	logic [`ROB_ADDR_BITS-1:0]  Tag;  // #ROB
@@ -471,6 +482,89 @@ typedef struct packed {
 	logic [$clog2(`ROB_SIZE)-1:0]  RegS2_Tag; 
 	logic [1:0]					   valid_vector; // not valid means no #ROB
 } MT_ROB_PACKET; //to ROB
+
+//LSQ
+  typedef struct packed {
+    logic               valid;
+    logic [`XLEN-1:0]   addr;
+    logic [31:0]        data;
+    MEM_SIZE            mem_size;
+    logic               is_store;
+    logic [$clog2(`ROB_SIZE)-1:0] rob_idx;
+    INST                inst;
+    logic [`XLEN-1:0]   PC;
+    logic [`XLEN-1:0]   NPC;
+    logic [4:0]         dest_reg_idx;
+  } lsq_entry_t;
+
+`define LSQ_SIZE 8
+//SQ
+  typedef struct packed {
+    logic                           valid;
+    logic [`XLEN-1:0]               addr;
+    logic [31:0]                    data;
+    MEM_SIZE                        mem_size;
+    logic                           is_store;
+    logic [$clog2(`ROB_SIZE)-1:0]   Tag;
+    INST                            inst;
+    logic [`XLEN-1:0]               PC;
+    logic [`XLEN-1:0]               NPC;
+    logic [4:0]                     dest_reg_idx;
+  } LSQ_ENTRY;
+
+typedef struct packed {
+    logic [`XLEN-1:0]               PC;
+    logic                           valid;
+    logic [`XLEN-1:0]               addr;
+    logic [`XLEN-1:0]               data;
+    logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
+    MEM_SIZE                        mem_size;
+} EX_LSQ_PACKET;
+
+
+typedef struct packed {
+    logic lsq_is_requesting; 
+
+    logic [`XLEN-1:0] address; // the address of the memory instruction
+    logic is_store; // 1 if the insn is a "store", otherwise "load"
+    logic [`XLEN-1:0] value; // only useful if the insn is a "store".
+
+    MEM_SIZE    mem_size; 
+} DCACHE_IN_PACKET;
+
+typedef struct packed {
+    // In the same cycle:
+    // If the insn given by IN_PACKET is a "load": 1 if the OUT_PACKET.value is valid, otherwise 0.
+    // If the insn is a "store": 1 if dcache completed this transaction (so insn can retire), otheriwse 0. 
+    // If lsq_is_requesting == 0, then completed is always 0.
+    logic completed;
+    // Dcache is processing a miss. Don't let LSQ process any other instructions until = 0!
+	// this is equivalent to (~completed | ~lsq_is_requesting).
+	// It might cause logic loops
+    // logic dcache_stall;
+    logic [`XLEN-1:0] value; // only useful if the insn is a "load"
+} DCACHE_OUT_PACKET;
+
+typedef struct packed {
+    logic valid;
+    // So the real address of this block is:
+    // {tag, index, 3'b0}
+    logic [24:0] tag;
+    logic [63:0] data;
+} DCACHE_LINE;
+
+typedef struct packed {
+    logic last_accessed;
+    DCACHE_LINE [1:0] line;
+} DCACHE_DATASET;
+
+typedef enum logic [2:0] { 
+    DCACHE_IDLE_HIT = 3'h0,
+    DCACHE_ST_EVICT = 3'h1,
+    DCACHE_LD_EVICT = 3'h2,
+    DCACHE_ST_WAIT = 3'h3,
+    DCACHE_LD_WAIT = 3'h4
+} DCACHE_STATE;
 
 typedef struct packed {
     INST              inst;
@@ -525,33 +619,35 @@ typedef struct packed {
     logic [1:0] ready;
     logic [1:0] received;
     logic [1:0] needTag;
+    logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
 } RS;
 
 
 typedef struct packed {
-    INST                inst;
-    logic [`XLEN-1:0]   PC;
-    logic [`XLEN-1:0]   NPC; // PC + 4
+    INST                            inst;
+    logic [`XLEN-1:0]               PC;
+    logic [`XLEN-1:0]               NPC; // PC + 4
 
-    logic [`XLEN-1:0]   rs1_value; // reg A value
-    logic [`XLEN-1:0]   rs2_value; // reg B value
+    logic [`XLEN-1:0]               rs1_value; // reg A value
+    logic [`XLEN-1:0]               rs2_value; // reg B value
 
-    ALU_OPA_SELECT      opa_select; // ALU opa mux select (ALU_OPA_xxx *)
-    ALU_OPB_SELECT      opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+    ALU_OPA_SELECT                  opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT                  opb_select; // ALU opb mux select (ALU_OPB_xxx *)
 
-    logic [4:0]         dest_reg_idx;  // destination (writeback) register index
-    ALU_FUNC            alu_func;      // ALU function select (ALU_xxx *)
-    logic               rd_mem;        // Does inst read memory?
-    logic               wr_mem;        // Does inst write memory?
-    logic               cond_branch;   // Is inst a conditional branch?
-    logic               uncond_branch; // Is inst an unconditional branch?
-    logic               halt;          // Is this a halt?
-    logic               illegal;       // Is this instruction illegal?
-    logic               csr_op;        // Is this a CSR operation? (we use this to get return code)
+    logic [4:0]                     dest_reg_idx;  // destination (writeback) register index
+    ALU_FUNC                        alu_func;      // ALU function select (ALU_xxx *)
+    logic                           rd_mem;        // Does inst read memory?
+    logic                           wr_mem;        // Does inst write memory?
+    logic                           cond_branch;   // Is inst a conditional branch?
+    logic                           uncond_branch; // Is inst an unconditional branch?
+    logic                           halt;          // Is this a halt?
+    logic                           illegal;       // Is this instruction illegal?
+    logic                           csr_op;        // Is this a CSR operation? (we use this to get return code)
 
-    logic               valid;
+    logic                           valid;
 
-    logic [$clog2(`ROB_SIZE)-1:0] Tag;//dest rob entry
+    logic [$clog2(`ROB_SIZE)-1:0]   Tag;//dest rob entry
+    logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
 } RS_EX_PACKET;
 
 /**

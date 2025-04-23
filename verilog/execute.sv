@@ -92,8 +92,16 @@ endmodule // conditional_branch
 module execute (
     input RS_EX_PACKET rs_ex_packet,
 
-    output EX_PACKET ex_packet
+    output EX_PACKET ex_packet,
+    output EX_LSQ_PACKET ex_lsq_packet
 );
+    assign ex_lsq_packet.PC         = ex_packet.PC;
+    assign ex_lsq_packet.valid      = ex_packet.valid && |{ex_packet.rd_mem, ex_packet.wr_mem};
+    assign ex_lsq_packet.addr       = ex_packet.alu_result;
+    assign ex_lsq_packet.data       = ex_packet.rs2_value;
+    assign ex_lsq_packet.lsq_idx    = rs_ex_packet.lsq_idx;
+    assign ex_lsq_packet.mem_size   = ex_packet.mem_size;
+
 
     logic [`XLEN-1:0] opa_mux_out, opb_mux_out;
     logic take_conditional;

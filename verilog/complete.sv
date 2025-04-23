@@ -3,9 +3,10 @@ module complete (
     input clock,
     input reset,
 
-    input EX_PACKET ex_reg,
-
+    input  EX_PACKET ex_reg,
+    input  CDB_PACKET lsq_input,
     output CDB_PACKET cdb_packet,
+    
     output logic             wb_regfile_en,  // register write enable
     output logic [4:0]       wb_regfile_idx, // register write index
     output logic [`XLEN-1:0] wb_regfile_data // register write data
@@ -25,7 +26,7 @@ module complete (
 	            cdb_packet.halt         = ex_reg.halt;
                 cdb_packet.illegal      = ex_reg.illegal;
 	            cdb_packet.done         = 0;
-	            cdb_packet.valid        = ex_reg.valid;
+	            cdb_packet.valid        = ex_reg.valid && !{ex_reg.rd_mem, ex_reg.wr_mem};
 	            cdb_packet.Tag          = ex_reg.Tag;
                 cdb_packet.alu_result   = ex_reg.alu_result;
             end

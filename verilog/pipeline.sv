@@ -99,12 +99,12 @@ module pipeline (
 //     end
     logic [`XLEN-1:0]       Icache2mem_addr; // goes to mem module, imem part
     BUS_COMMAND             Icache2mem_command;
-    // assign proc2mem_command = (proc2Dmem_command == BUS_NONE) ? Icache2mem_command : proc2Dmem_command;//todo
-    // assign proc2mem_addr    = (proc2Dmem_command == BUS_NONE) ? Icache2mem_addr : proc2Dmem_addr;
-    // assign proc2mem_data    =  proc2Dmem_data;
-    assign proc2mem_command = Icache2mem_command;
-    assign proc2mem_addr    = Icache2mem_addr;
+    assign proc2mem_command = (proc2Dmem_command == BUS_NONE) ? Icache2mem_command : proc2Dmem_command;//todo
+    assign proc2mem_addr    = (proc2Dmem_command == BUS_NONE) ? Icache2mem_addr : proc2Dmem_addr;
     assign proc2mem_data    =  proc2Dmem_data;
+    // assign proc2mem_command = Icache2mem_command;
+    // assign proc2mem_addr    = Icache2mem_addr;
+    // assign proc2mem_data    =  proc2Dmem_data;
 
     /////////////////////////////////////////////////////////////////////////
     //                                                                     //
@@ -143,37 +143,6 @@ module pipeline (
         .proc2Imem_addr         (Icache2mem_addr)      // output to mem
     );
 
-
-    /////////////////////////////////////////////////////////////////////////
-    //                                                                     //
-    //  Instance Name :  u_dcache                                          //
-    //                                                                     //
-    //  Description :  Normal dcache provided by 4824                      //
-    //                                                                     //
-    /////////////////////////////////////////////////////////////////////////
-    // dcache u_dcache(
-    //     .clock                  (clock), 
-    //     .reset                  (reset),
-
-    //     //from LSQ
-    //     .lsq2dcache_packet      (lsq2dcache_packet),
-
-    //     //from MEMORY
-    //     .Dmem2proc_response     (mem2proc_response),
-    //     .Dmem2proc_data         (mem2proc_data),
-    //     .Dmem2proc_tag          (mem2proc_tag),
-
-    //     //to LSQ (and ROB)
-    //     .dcache2lsq_packet      (dcache2lsq_packet),
-
-    //     //to testbench and cache set
-    //     .cache_data             (dcache_data),
-
-    //     //to MEMORY
-    //     .proc2Dmem_addr         (proc2Dmem_addr),
-    //     .proc2Dmem_data         (proc2Dmem_data),
-    //     .proc2Dmem_command      (proc2Dmem_command)
-    // );
 
 
     //////////////////////////////////////////////////
@@ -221,7 +190,7 @@ module pipeline (
     //////////////////////////////////////////////////
     IB_ID_PACKET ib_id_packet;
     logic rs_available;
-    logic [7:0] busy;
+    logic [11:0] busy;
     logic squash = 1'b0;//todo
     logic read_enable, enable;//todo
     logic available;//rob available
@@ -256,11 +225,12 @@ module pipeline (
     // logic [`XLEN-1:0] wb_regfile_data; // register write data
 
     ROB_MT_PACKET rob_mt_packet;
-
+    DP_LSQ_PACKET dp_lsq_packet;
     DP_RS_PACKET  dp_rs_packet;
     DP_ROB_PACKET dp_rob_packet;
     MT_ROB_PACKET mt_rob_packet;
-    assign rs_mt_rob_enable = dp_rs_packet.valid && available && ((!dp_rs_packet.mem && ((!busy[7]) || (!busy[6]) || (!busy[5]) || (!busy[4]) ||(!busy[3]) || (!busy[2]) || (!busy[1]) || (!busy[0]))) || (dp_rs_packet.mem && 0)) && enable;
+    assign rs_mt_rob_enable = dp_rs_packet.valid && available && ((!dp_rs_packet.mem && ((!busy[7]) || (!busy[6]) || (!busy[5]) || (!busy[4]) ||(!busy[3]) || (!busy[2]) || (!busy[1]) || (!busy[0])))
+                         || (dp_rs_packet.mem && ((!busy[8]) || (!busy[9])  || (!busy[10]) || (!busy[11]) ))) && enable;
     Dispatch u_Dispatch(
         .clock              (clock),
         .reset              (reset),
@@ -273,14 +243,16 @@ module pipeline (
         //output
         .dp_rs_packet       (dp_rs_packet),
         .dp_rob_packet      (dp_rob_packet),
+        .dp_lsq_packet      (dp_lsq_packet),
         .mt_rob_packet      (mt_rob_packet),
+
 
         .wb_regfile_en      (cp_rt_packet.rob_entry.cp_bit),  // register write enable
         .wb_regfile_idx     (cp_rt_packet.rob_entry.reg_idx), // register write index
         .wb_regfile_data    (cp_rt_packet.rob_entry.value) // register write data
     );
 
-
+    CDB_PACKET             lsq2cdb_packet; 
 
     ROB_RS_PACKET   rob_rs_packet;//todo
     CP_RT_PACKET    cp_rt_packet;   //todo
@@ -292,6 +264,7 @@ module pipeline (
         .squash_signal      (1'b0),    // squash signal in
 
         .CDB_packet_in      (CDB_packet),    // from CDB//todo
+        .lsq_input          (lsq2cdb_packet),
 
         .dp_rob_packet      (dp_rob_packet),    // From dispatch stage, decoded get 1. destreg 2. pc
         .enable             (rs_mt_rob_enable),//todo
@@ -318,6 +291,8 @@ module pipeline (
     //                                              //
     ////////////////////////////////////////////////// 
     RS_EX_PACKET rs_ex_packet;
+    logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
+    logic lsq_available;
     ReservationStation u_ReservationStation(
         .clock              (clock),
         .reset              (reset),
@@ -325,7 +300,9 @@ module pipeline (
         .enable             (rs_mt_rob_enable),
         .dp_rs_packet       (dp_rs_packet),
         .rob_rs_packet      (rob_rs_packet),
+        .lsq_idx            (lsq_idx),
         .cdb_packet         (CDB_packet),
+        .lsq_input          (lsq2cdb_packet),
 
         .take_branch        (Branch_Miss),
 
@@ -334,10 +311,28 @@ module pipeline (
         .busy               (busy)
     );
 
-
+    EX_LSQ_PACKET ex_lsq_packet;
     execute u_execute(
         .rs_ex_packet       (rs_ex_packet),
-        .ex_packet          (ex_packet)
+        .ex_packet          (ex_packet),
+        .ex_lsq_packet      (ex_lsq_packet)
+    );
+    DCACHE_IN_PACKET             lsq2dcache_packet;
+    DCACHE_OUT_PACKET            dcache2lsq_packet;
+    lsq u_lsq(
+        .clock                  (clock),
+        .reset                  (reset),
+
+        .dp_lsq_packet          (dp_lsq_packet),
+        .enable                 ((rs_mt_rob_enable && dp_rs_packet.mem)),
+        .lsq_available          (lsq_available),
+        .lsq_idx                (lsq_idx),
+
+        .ex_lsq_packet          (ex_lsq_packet),
+        .lsq2cdb                (lsq2cdb_packet),
+
+        .lsq2dcache_packet      (lsq2dcache_packet),
+        .dcache2lsq_packet      (dcache2lsq_packet)
     );
 
     always_ff @( posedge clock ) begin
@@ -348,6 +343,32 @@ module pipeline (
         end
     end
 
+    /////////////////////////////////////////////////////////////////////////
+    //                                                                     //
+    //  Instance Name :  u_dcache                                          //
+    //                                                                     //
+    //  Description :  Normal dcache provided by 4824                      //
+    //                                                                     //
+    /////////////////////////////////////////////////////////////////////////
+    DCACHE_DATASET [15:0]        dcache;
+    dcache u_dcache (
+       .clock                  (clock),
+       .reset                  (reset),
+
+       .dcache_in              (lsq2dcache_packet),
+       .Dmem2proc_resp         (mem2proc_response),
+       .Dmem2proc_data         (mem2proc_data),
+       .Dmem2proc_tag          (mem2proc_tag),
+       .dcache2lsq_packet      (dcache2lsq_packet),
+
+       .proc2Dmem_addr         (proc2Dmem_addr),
+       .proc2Dmem_data         (proc2Dmem_data),
+       .proc2Dmem_cmd          (proc2Dmem_command),
+
+       .dcache                 (dcache)
+   );
+
+
     complete u_complete(
         .clock(clock),
         .reset(reset),
@@ -357,9 +378,6 @@ module pipeline (
         .wb_regfile_en      (wb_regfile_en),  // register write enable
         .wb_regfile_idx     (wb_regfile_idx), // register write index
         .wb_regfile_data    (wb_regfile_data) // register write data
-
-        
-
     );
 
 

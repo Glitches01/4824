@@ -5,13 +5,15 @@ module ReservationStation (
     input   DP_RS_PACKET    dp_rs_packet,
     input                   enable,
     input   ROB_RS_PACKET   rob_rs_packet,
+    input logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx,
     input   CDB_PACKET      cdb_packet,
     // output rs_dp_packet rs_dp_packet,
     input                   take_branch,
+    input   CDB_PACKET      lsq_input,
 
     output RS_EX_PACKET     rs_ex_packet,
     output logic            read_enable,
-    output [7:0]            busy
+    output [11:0]            busy
 );
 
     ////////////////////////////////////////////////
@@ -68,8 +70,8 @@ module ReservationStation (
     // Control for reading from Instruction Buffer
     //
     ///////////////////////////////////////////////////
-    logic req_valid;
-    assign read_enable = req_valid;
+    logic req_valid, req_valid_mem;
+    assign read_enable = req_valid && req_valid_mem;
     // logic prev_read_enable;
     // wire rs_available = (req_valid || 0) && !prev_read_enable;//todo to fast maybe gg
     // // 时序逻辑：生成 read_enable
@@ -88,13 +90,13 @@ module ReservationStation (
     // ================================================================
     // gnt
     // ================================================================
-    logic [7:0] gnt;
+    logic [7:0] gnt_rs;
     wire  [7:0] req = {!RS_Alu[7].busy,!RS_Alu[6].busy,!RS_Alu[5].busy,!RS_Alu[4].busy,!RS_Alu[3].busy,!RS_Alu[2].busy,!RS_Alu[1].busy,!RS_Alu[0].busy};
     priority_encoder #(
         .WIDTH(8)
     )u_priority_encoder(
         .req(req),
-        .gnt(gnt),
+        .gnt(gnt_rs),
         .valid(req_valid)
     );
 
@@ -107,11 +109,9 @@ module ReservationStation (
 
     RS RS_Alu[0:7];
     logic [7:0] enable_alu;
-    logic [7:0] gnt_rs;
-    logic issue, issue_mem;
+    logic [11:0] gnt;
+    logic issue;
     logic [7:0] issue_alu;
-    assign issue_alu1 = RS_Alu[0].ready[0] && RS_Alu[0].ready[1];
-    assign issue_alu2 = RS_Alu[1].ready[0] && RS_Alu[1].ready[1];
     // assign issue_mem  = RS_Mem.ready[0] && RS_Mem.ready[1];todo
     // ================================================================
     // 生成 8 个保留站实例
@@ -119,7 +119,7 @@ module ReservationStation (
     genvar i;
     generate
       for (i = 0; i < 8; i = i + 1) begin : gen_reservation_stations
-        assign enable_alu[i] = 1 && (!RS_Alu[i].busy) && dp_rs_packet.valid && !{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable && (gnt[i] == 1'b1);
+        assign enable_alu[i] = 1 && (!RS_Alu[i].busy) && dp_rs_packet.valid && !{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable && (gnt_rs[i] == 1'b1);
         assign busy[i] = RS_Alu[i].busy;
         assign issue_alu[i] = RS_Alu[i].ready[0] && RS_Alu[i].ready[1];
         ResSta u_RS (
@@ -150,9 +150,10 @@ module ReservationStation (
 
             // CDB 广播（共享）
             .cdb_packet  (cdb_packet),
+            .lsq_input   (lsq_input),
 
             // 仲裁授权信号（按索引分配）
-            .issue       (gnt_rs[i]),  // 例如 gnt_rs[0] ~ gnt_rs[7]
+            .issue       (gnt[i]),  // 例如 gnt_rs[0] ~ gnt_rs[7]
 
             // 输出到执行单元（按索引分配）
             .rs          (RS_Alu[i])   // 例如 RS_Alu[0] ~ RS_Alu[7]
@@ -160,69 +161,65 @@ module ReservationStation (
       end
     endgenerate
 
-    //assign rs_available = |{!busy[0], !busy[1], 0};
-    // ResSta u_RS0(
-    //     .clock(clock),
-    //     .reset(reset),
+    logic [3:0] gnt_mem;
+    wire  [3:0] req_mem = {!RS_Mem[3].busy,!RS_Mem[2].busy,!RS_Mem[1].busy,!RS_Mem[0].busy};
+    priority_encoder #(
+        .WIDTH(4)
+    )u_priority_encoder_mem(
+        .req(req_mem),
+        .gnt(gnt_mem),
+        .valid(req_valid_mem)
+    );
 
-    //     .flush(cdb_packet.take_branch),
-    //     .enable(enable_alu[0]),
-    //     .dp_rs_packet(dp_rs_packet),
-    //     .RS1_Tag(RS1_Tag),.RS2_Tag(RS2_Tag),.Tag(Tag),.needTag(needTag),
-    //     .rs1_value(rs1_value),.rs2_value(rs2_value),
+    RS RS_Mem[0:3];
+    logic [3:0] enable_mem;
+    logic [3:0] issue_mem;
+    genvar f;
+    generate
+      for (f = 0; f < 4; f = f + 1) begin
+        assign enable_mem[f]    = 1 && (!RS_Mem[f].busy) && dp_rs_packet.valid && |{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable && (gnt_mem[f] == 1'b1);
+        assign busy[f+8]        = RS_Mem[f].busy;
+        assign issue_mem[f]     = RS_Mem[f].ready[0] && RS_Mem[f].ready[1];
+        ResSta_MEM u_RS_MEM (
+            .clock       (clock),
+            .reset       (reset),
 
-    //     .ready(ready),
-    //     .cdb_packet(cdb_packet),
+            // 冲刷信号（共享）
+            .flush       (take_branch),
+            //.flush       (1'b0),
+            // 使能信号按索引分配（例如 enable_alu[0] ~ enable_alu[7]）
+            .enable      (enable_mem[f]),
 
-    //     .issue(gnt_rs[2]),
+            // 输入数据包（假设广播共享）
+            .dp_rs_packet(dp_rs_packet),
 
+            // Tag 信号按索引分配（假设 Tag 是向量）
+            .RS1_Tag     (RS1_Tag),
+            .RS2_Tag     (RS2_Tag),
+            .Tag         (Tag),
+            .needTag     (needTag),
 
+            .lsq_idx     (lsq_idx),
 
+            // 操作数值（按索引分配）
+            .rs1_value   (rs1_value),
+            .rs2_value   (rs2_value),
 
-    //     //output for issue
-    //     .rs(RS_Alu[0])
-    // );
+            // 就绪信号（按索引输出）
+            .ready       (ready),
 
+            // CDB 广播（共享）
+            .cdb_packet  (cdb_packet),
+            .lsq_input   (lsq_input),
 
-    // RS RS_Mem;
-    // logic enable_mem;
-    // assign enable_mem = 1 && (!RS_Mem.busy) && dp_rs_packet.valid && |{dp_rs_packet.rd_mem, dp_rs_packet.wr_mem} && enable;
-    //     ResSta u_RS_MEM (
-    //         .clock       (clock),
-    //         .reset       (reset),
+            // 仲裁授权信号（按索引分配）
+            .issue       (gnt[8 + f]),  // 例如 gnt_rs[0] ~ gnt_rs[7]
 
-    //         // 冲刷信号（共享）
-    //         .flush       (take_branch),
-    //         //.flush       (1'b0),
-    //         // 使能信号按索引分配（例如 enable_alu[0] ~ enable_alu[7]）
-    //         .enable      (enable_mem),
-
-    //         // 输入数据包（假设广播共享）
-    //         .dp_rs_packet(dp_rs_packet),
-
-    //         // Tag 信号按索引分配（假设 Tag 是向量）
-    //         .RS1_Tag     (RS1_Tag),
-    //         .RS2_Tag     (RS2_Tag),
-    //         .Tag         (Tag),
-    //         .needTag     (needTag),
-
-    //         // 操作数值（按索引分配）
-    //         .rs1_value   (rs1_value),
-    //         .rs2_value   (rs2_value),
-
-    //         // 就绪信号（按索引输出）
-    //         .ready       (ready),
-
-    //         // CDB 广播（共享）
-    //         .cdb_packet  (cdb_packet),
-
-    //         // 仲裁授权信号（按索引分配）
-    //         .issue       (gnt_rs[i]),  // 例如 gnt_rs[0] ~ gnt_rs[7]
-
-    //         // 输出到执行单元（按索引分配）
-    //         .rs          (RS_Alu[i])   // 例如 RS_Alu[0] ~ RS_Alu[7]
-    //     );
-
+            // 输出到执行单元（按索引分配）
+            .rs          (RS_Mem[f])   // 例如 RS_Alu[0] ~ RS_Alu[7]
+        );
+      end
+    endgenerate
 
     /////////////////////////////////////////////////////
     // Issue when RS get ready
@@ -232,41 +229,55 @@ module ReservationStation (
     // assign issue = |{issue_alu1, issue_alu2, issue_mem};
 
     priority_encoder #(
-        .WIDTH(8)
+        .WIDTH(12)
     )u_priority_encoder_rs(
-        .req(issue_alu),
-        .gnt(gnt_rs),
+        .req({issue_mem,issue_alu}),
+        .gnt(gnt),
         .valid(issue)
     );
 
     always_comb begin
-        case (gnt_rs)
-            8'b10000000: begin
-                RS_issue = RS_Alu[7];
+        RS_issue = 0;
+        for (int m = 0;m < 8 ; m++) begin
+            if (gnt[m]) begin
+                RS_issue = RS_Alu[m];
             end
-            8'b01000000: begin
-                RS_issue = RS_Alu[6];
+        end
+        for (int k = 0;k < 4 ; k++) begin
+            if (gnt[k+8]) begin
+                RS_issue = RS_Mem[k];
             end
-            8'b00100000: begin
-                RS_issue = RS_Alu[5];
-            end
-            8'b00010000: begin
-                RS_issue = RS_Alu[4];
-            end
-            8'b00001000: begin
-                RS_issue = RS_Alu[3];
-            end
-            8'b00000100: begin
-                RS_issue = RS_Alu[2];
-            end
-            8'b00000010: begin
-                RS_issue = RS_Alu[1];
-            end
-            8'b00000001: begin
-                RS_issue = RS_Alu[0];
-            end
-            default: RS_issue = 0;
-        endcase
+        end
+        // case (gnt)
+        //     9'b100000000: begin
+        //         RS_issue = RS_Mem;
+        //     end
+        //     9'b010000000: begin
+        //         RS_issue = RS_Alu[7];
+        //     end
+        //     9'b001000000: begin
+        //         RS_issue = RS_Alu[6];
+        //     end
+        //     9'b000100000: begin
+        //         RS_issue = RS_Alu[5];
+        //     end
+        //     9'b000010000: begin
+        //         RS_issue = RS_Alu[4];
+        //     end
+        //     9'b000001000: begin
+        //         RS_issue = RS_Alu[3];
+        //     end
+        //     9'b000000100: begin
+        //         RS_issue = RS_Alu[2];
+        //     end
+        //     9'b000000010: begin
+        //         RS_issue = RS_Alu[1];
+        //     end
+        //     9'b000000001: begin
+        //         RS_issue = RS_Alu[0];
+        //     end
+        //     default: RS_issue = 0;
+        // endcase
     end
 
     always_ff @( posedge clock ) begin
@@ -294,6 +305,7 @@ module ReservationStation (
             rs_ex_packet.illegal        <= RS_issue.illegal;      
             rs_ex_packet.csr_op         <= RS_issue.csr_op;       
             rs_ex_packet.valid          <= RS_issue.valid;
+            rs_ex_packet.lsq_idx        <= RS_issue.lsq_idx;
         end else begin
             rs_ex_packet.valid          <= 0;
         end
@@ -342,6 +354,7 @@ module ResSta #(
     //deassert rs
     input                           ready[0:1],
     input CDB_PACKET                cdb_packet,
+    input CDB_PACKET      lsq_input,
     //for deassert issued rs
     input                           issue,
 
@@ -402,10 +415,132 @@ module ResSta #(
                 rs.busy <= 0;
             end
         end
+
+        if(lsq_input.valid) begin
+            if ((lsq_input.Tag == rs.RegS1_Tag) && (lsq_input.dest_reg_idx != `ZERO_REG) && !rs.received[0] && !rs.ready[0] && rs.needTag[0]) begin
+                rs.rs1_value <= lsq_input.Value;
+                rs.ready[0]  <= 1;
+                rs.received[0] <= 1;
+            end
+            if ((lsq_input.Tag == rs.RegS2_Tag) && (lsq_input.dest_reg_idx != `ZERO_REG) && !rs.received[1] && !rs.ready[1] && rs.needTag[1]) begin
+                rs.rs2_value <= lsq_input.Value;
+                rs.ready[1]  <= 1;
+                rs.received[1] <= 1;
+            end
+            if(lsq_input.valid && (lsq_input.Tag == rs.Tag)) begin
+                rs.busy <= 0;
+            end
+        end
         
         if ((issue)) begin//todo
             rs.ready[0]         <= 1'b0;
             rs.ready[1]         <= 1'b0;
+        end
+    end
+endmodule
+
+
+
+module ResSta_MEM #(
+    
+) (
+    input clock, reset,
+
+    input flush,
+    //dispatch
+    input enable,
+    input DP_RS_PACKET              dp_rs_packet,
+    //rob and mt and dp  value
+    input [$clog2(`ROB_SIZE)-1:0]   RS1_Tag, RS2_Tag, Tag,
+    input [`XLEN:0]                 rs1_value, rs2_value,
+    input [1:0] needTag,
+    input logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx,
+    //deassert rs
+    input                           ready[0:1],
+    input CDB_PACKET                cdb_packet,
+    input CDB_PACKET      lsq_input,
+    //for deassert issued rs
+    input                           issue,
+
+    output RS rs
+);
+    always_ff @( posedge clock ) begin
+        if (reset) begin
+            rs <= 0;
+        end
+        else if (flush) begin
+            rs <= 0;
+        end
+        else if (enable) begin
+            rs.inst             <= dp_rs_packet.inst;
+            rs.NPC              <= dp_rs_packet.NPC;
+            rs.PC               <= dp_rs_packet.PC;
+            rs.busy             <= 1;
+
+            rs.Tag              <= Tag;
+
+            rs.RegS1_Tag        <= RS1_Tag;
+            rs.RegS2_Tag        <= RS2_Tag;
+
+            rs.ready[0]         <= ready[0];
+            rs.ready[1]         <= ready[1];
+            rs.lsq_idx          <= lsq_idx;
+
+            rs.rs1_value        <= rs1_value;
+            rs.rs2_value        <= rs2_value;
+            rs.opa_select       <= dp_rs_packet.opa_select;
+            rs.opb_select       <= dp_rs_packet.opb_select;
+            rs.dest_reg_idx     <= dp_rs_packet.dest_reg_idx;
+            rs.alu_func         <= dp_rs_packet.alu_func;
+            rs.rd_mem           <= dp_rs_packet.rd_mem;
+            rs.wr_mem           <= dp_rs_packet.wr_mem;
+            rs.cond_branch      <= dp_rs_packet.cond_branch;
+            rs.uncond_branch    <= dp_rs_packet.uncond_branch;
+            rs.halt             <= dp_rs_packet.halt;
+            rs.illegal          <= dp_rs_packet.illegal;
+            rs.csr_op           <= dp_rs_packet.csr_op;
+            rs.valid            <= dp_rs_packet.valid;
+            rs.func_unit        <= 1;
+            rs.received         <= 2'b00;
+            rs.needTag          <= needTag;
+        end
+
+        if(cdb_packet.valid) begin
+            if ((cdb_packet.Tag == rs.RegS1_Tag) && (cdb_packet.dest_reg_idx != `ZERO_REG) && !rs.received[0] && !rs.ready[0] && rs.needTag[0]) begin
+                rs.rs1_value <= cdb_packet.Value;
+                rs.ready[0]  <= 1;
+                rs.received[0] <= 1;
+            end
+            if ((cdb_packet.Tag == rs.RegS2_Tag) && (cdb_packet.dest_reg_idx != `ZERO_REG) && !rs.received[1] && !rs.ready[1] && rs.needTag[1]) begin
+                rs.rs2_value <= cdb_packet.Value;
+                rs.ready[1]  <= 1;
+                rs.received[1] <= 1;
+            end
+            if(cdb_packet.valid && (cdb_packet.Tag == rs.Tag)) begin
+                rs.busy <= 0;
+            end
+        end
+
+        if(lsq_input.valid) begin
+            if ((lsq_input.Tag == rs.RegS1_Tag) && (lsq_input.dest_reg_idx != `ZERO_REG) && !rs.received[0] && !rs.ready[0] && rs.needTag[0]) begin
+                rs.rs1_value <= lsq_input.Value;
+                rs.ready[0]  <= 1;
+                rs.received[0] <= 1;
+            end
+            if ((lsq_input.Tag == rs.RegS2_Tag) && (lsq_input.dest_reg_idx != `ZERO_REG) && !rs.received[1] && !rs.ready[1] && rs.needTag[1]) begin
+                rs.rs2_value <= lsq_input.Value;
+                rs.ready[1]  <= 1;
+                rs.received[1] <= 1;
+            end
+            if(lsq_input.valid && (lsq_input.Tag == rs.Tag)) begin
+                rs.busy <= 0;
+            end
+        end
+        
+        if ((issue)) begin//todo
+            rs.ready[0]         <= 1'b0;
+            rs.ready[1]         <= 1'b0;
+            rs.busy             <= rs.rd_mem;
         end
     end
 endmodule

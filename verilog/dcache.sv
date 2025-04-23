@@ -12,7 +12,7 @@ module dcache(
 
     output DCACHE_OUT_PACKET            dcache2lsq_packet,           // output to LSQ (and ROB)
     
-    output DCACHE_DATASET [15:0]        dcache_exposure_out,    // exposure dcache
+    output DCACHE_DATASET [15:0]        dcache,                      // dcache
     
     // outputs to mem
     output logic [`XLEN-1:0]            proc2Dmem_addr,               // address of memory request
@@ -35,7 +35,7 @@ module dcache(
     logic [3:0] waiting_mem_tag; // the tag dcache should be expecting.
     
     assign address_valid = (dcache_in.address < `MEM_SIZE_IN_BYTES);
-    assign real_request = (dcache_in.lsq_is_requesting) && address_valid;
+    assign real_request  = (dcache_in.lsq_is_requesting) && address_valid;
 
     
     ///////////////////////////////////////////////////////////////////
@@ -44,11 +44,11 @@ module dcache(
     //  current_addr_offset: decoded offset sent by lsq
     ///////////////////////////////////////////////////////////////////
     logic [24:0] current_addr_tag;
-    logic [3:0] current_addr_index;
-    logic [2:0] current_addr_offset;
+    logic [3:0]  current_addr_index;
+    logic [2:0]  current_addr_offset;
     
-    assign current_addr_tag = dcache_in.address[31:7];
-    assign current_addr_index = dcache_in.address[6:3];
+    assign current_addr_tag    = dcache_in.address[31:7];
+    assign current_addr_index  = dcache_in.address[6:3];
     assign current_addr_offset = dcache_in.address[2:0];
 
     ///////////////////////////////////////////////////////////////////
@@ -56,7 +56,7 @@ module dcache(
     //  current_set: current cache set lsq is accessing
     //  
     ///////////////////////////////////////////////////////////////////
-    assign current_set = dcache_exposure_out[current_addr_index];
+    assign current_set = dcache[current_addr_index];
     
     ///////////////////////////////////////////////////////////////////
     //  line0_hit: hit line 0 by comparing tag
@@ -79,9 +79,8 @@ module dcache(
     assign dcache_in_value_byte = dcache_in.value[7:0];
 
     logic evict_line0, evict_line1;
-    assign evict_line0 = miss & (current_set.last_accessed) & current_set.line[0].valid;
-    assign evict_line1 = miss & (~current_set.last_accessed) &
-    current_set.line[0].valid;
+    assign evict_line0 = miss & (current_set.last_accessed)  & current_set.line[0].valid;
+    assign evict_line1 = miss & (~current_set.last_accessed) & current_set.line[0].valid;
 
 
     logic current_line_idx;
@@ -119,12 +118,12 @@ module dcache(
     //  Update the cache line during DCACHE_IDLE_HIT. DCACHE_LD_WAIT, DCACHE_ST_WAIT
     ///////////////////////////////////////////////////////////////////
     always_comb begin
-        n_cache_data = dcache_exposure_out;
+        n_cache_data = dcache;
         if (((state == DCACHE_LD_WAIT) || (state == DCACHE_ST_WAIT)) && real_request) begin
             if ((waiting_mem_tag == Dmem2proc_tag) && (waiting_mem_tag != 3'b0)) begin
-                n_cache_data[current_addr_index].line[current_line_idx].data = Dmem2proc_data;
+                n_cache_data[current_addr_index].line[current_line_idx].data  = Dmem2proc_data;
                 n_cache_data[current_addr_index].line[current_line_idx].valid = 1'b1;
-                n_cache_data[current_addr_index].line[current_line_idx].tag = current_addr_tag;
+                n_cache_data[current_addr_index].line[current_line_idx].tag   = current_addr_tag;
             end
         end
         if (((state == DCACHE_ST_WAIT) && ((waiting_mem_tag == Dmem2proc_tag) && (waiting_mem_tag != 3'b0)))
@@ -132,14 +131,14 @@ module dcache(
             if (dcache_in.mem_size[1:0] == 2'b10) begin 
                 case (current_addr_offset[2])
                     1'b1: n_cache_data[current_addr_index].line[current_line_idx].data[63:32] = dcache_in.value;
-                    1'b0: n_cache_data[current_addr_index].line[current_line_idx].data[31:0] = dcache_in.value;
+                    1'b0: n_cache_data[current_addr_index].line[current_line_idx].data[31:0]  = dcache_in.value;
                 endcase
             end else if (dcache_in.mem_size[1:0] == 2'b01) begin
                 case (current_addr_offset[2:1])
                     2'b11: n_cache_data[current_addr_index].line[current_line_idx].data[63:48] = dcache_in_value_half;
                     2'b10: n_cache_data[current_addr_index].line[current_line_idx].data[47:32] = dcache_in_value_half;
                     2'b01: n_cache_data[current_addr_index].line[current_line_idx].data[31:16] = dcache_in_value_half;
-                    2'b00: n_cache_data[current_addr_index].line[current_line_idx].data[15:0] = dcache_in_value_half;
+                    2'b00: n_cache_data[current_addr_index].line[current_line_idx].data[15:0]  = dcache_in_value_half;
                 endcase
             end else if (dcache_in.mem_size[1:0] == 2'b00) begin 
                 case (current_addr_offset)
@@ -149,8 +148,8 @@ module dcache(
                     3'b100: n_cache_data[current_addr_index].line[current_line_idx].data[39:32] = dcache_in_value_byte;
                     3'b011: n_cache_data[current_addr_index].line[current_line_idx].data[31:24] = dcache_in_value_byte;
                     3'b010: n_cache_data[current_addr_index].line[current_line_idx].data[23:16] = dcache_in_value_byte;
-                    3'b001: n_cache_data[current_addr_index].line[current_line_idx].data[15:8] = dcache_in_value_byte;
-                    3'b000: n_cache_data[current_addr_index].line[current_line_idx].data[7:0] = dcache_in_value_byte;
+                    3'b001: n_cache_data[current_addr_index].line[current_line_idx].data[15:8]  = dcache_in_value_byte;
+                    3'b000: n_cache_data[current_addr_index].line[current_line_idx].data[7:0]   = dcache_in_value_byte;
                 endcase
             end
         end
@@ -189,45 +188,45 @@ module dcache(
     always_ff @(posedge clock) begin
         if (reset) begin
             for (int i = 0; i < 16; i++) begin
-                dcache_exposure_out[i].line[0].valid <= `SD 1'b0;
-                dcache_exposure_out[i].line[1].valid <= `SD 1'b0;
-                dcache_exposure_out[i].last_accessed <= `SD 1'b0;
+                dcache[i].line[0].valid <= 1'b0;
+                dcache[i].line[1].valid <= 1'b0;
+                dcache[i].last_accessed <= 1'b0;
             end
-            state <= `SD DCACHE_IDLE_HIT;
-            waiting_mem_tag <= `SD 4'b0;
+            state <= DCACHE_IDLE_HIT;
+            waiting_mem_tag <= 4'b0;
         end else begin
-            dcache_exposure_out <= `SD n_cache_data;
+            dcache <= n_cache_data;
             // State transitions
             if ((state == DCACHE_IDLE_HIT) && miss) begin
-                waiting_mem_tag <= `SD Dmem2proc_resp;
+                waiting_mem_tag <= Dmem2proc_resp;
                 if (dcache_in.is_store) begin
-                    state <= `SD DCACHE_ST_EVICT;
+                    state <= DCACHE_ST_EVICT;
                 end else begin
-                    state <= `SD DCACHE_LD_EVICT;
+                    state <= DCACHE_LD_EVICT;
                 end
             end else if (state == DCACHE_LD_EVICT) begin
                 if (real_request)
-                    state <= `SD DCACHE_LD_WAIT;
+                    state <= DCACHE_LD_WAIT;
                 else begin
-                    state <= `SD DCACHE_IDLE_HIT;
-                    waiting_mem_tag <= `SD 4'b0;
+                    state <= DCACHE_IDLE_HIT;
+                    waiting_mem_tag <= 4'b0;
                 end
             end else if (state == DCACHE_ST_EVICT) begin
                 if (real_request)
-                    state <= `SD DCACHE_ST_WAIT;
+                    state <= DCACHE_ST_WAIT;
                 else begin
-                    state <= `SD DCACHE_IDLE_HIT;
-                    waiting_mem_tag <= `SD 4'b0;
+                    state <= DCACHE_IDLE_HIT;
+                    waiting_mem_tag <= 4'b0;
                 end
             end else if (state == DCACHE_LD_WAIT) begin
                 if (~real_request || ((waiting_mem_tag == Dmem2proc_tag) && (waiting_mem_tag != 3'b0))) begin
-                    state <= `SD DCACHE_IDLE_HIT;
-                    waiting_mem_tag <= `SD 4'b0;
+                    state <= DCACHE_IDLE_HIT;
+                    waiting_mem_tag <= 4'b0;
                 end
             end else if (state == DCACHE_ST_WAIT) begin
                 if (~real_request || ((waiting_mem_tag == Dmem2proc_tag) && (waiting_mem_tag != 3'b0))) begin
-                    state <= `SD DCACHE_IDLE_HIT;
-                    waiting_mem_tag <= `SD 4'b0;
+                    state <= DCACHE_IDLE_HIT;
+                    waiting_mem_tag <= 4'b0;
                 end
             end
         end
