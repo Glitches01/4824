@@ -114,7 +114,7 @@ module pipeline (
     //                                                                     //
     /////////////////////////////////////////////////////////////////////////
     logic mem2Icache_ack;
-    assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command);// && (!proc2Dmem_command);//todo
+    assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command) && (!proc2Dmem_command);//todo
     //assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command);
     // && (!proc2Dmem_command);
     IF_ICACHE_PACKET IF_Icache_packet;

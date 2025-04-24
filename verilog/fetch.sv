@@ -48,7 +48,7 @@ module stage_if (
     always_comb begin//todo
         NPC_reg = bp2if_pc;
     end
-    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid && (Icache_IF_packet.Icache_data_out != 32'h0)) && !IsFull;//todo could controls
+    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid) && !IsFull;//todo could controls (Icache_IF_packet.Icache_data_out != 32'h0)) &&
 
     // synopsys sync_set_reset "reset"
     always_ff @(posedge clock) begin

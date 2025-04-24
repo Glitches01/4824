@@ -46,7 +46,7 @@ module icache (
     input [`XLEN-1:0] proc2Icache_addr,
 
     // To memory
-    output logic [1:0]       proc2Imem_command,
+    output BUS_COMMAND       proc2Imem_command,
     output logic [`XLEN-1:0] proc2Imem_addr,
 
     // To fetch stage

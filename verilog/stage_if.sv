@@ -42,7 +42,7 @@ module stage_if (
     always_comb begin//todo
         NPC_reg = PC_reg + 8;
     end
-    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid && (Icache_IF_packet.Icache_data_out != 64'h0));//todo could controls
+    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid);// && (Icache_IF_packet.Icache_data_out != 64'h0));//todo could controls
 
     // synopsys sync_set_reset "reset"
     always_ff @(posedge clock) begin
