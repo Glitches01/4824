@@ -127,7 +127,7 @@ module dcache(
             end
         end
         if (((state == DCACHE_ST_WAIT) && ((waiting_mem_tag == Dmem2proc_tag) && (waiting_mem_tag != 3'b0)))
-        || ((state == DCACHE_IDLE_HIT) && ~miss && dcache_in.is_store)) begin
+        || ((state == DCACHE_IDLE_HIT) && ~miss && dcache_in.is_store)) begin//todo
             if (dcache_in.mem_size[1:0] == 2'b10) begin 
                 case (current_addr_offset[2])
                     1'b1: n_cache_data[current_addr_index].line[current_line_idx].data[63:32] = dcache_in.value;

@@ -12,6 +12,7 @@ module ROB (
     input       MT_ROB_PACKET   mt_rob_packet,   
 
     input       CDB_PACKET      lsq_input,
+    input logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx,
 
     output      logic           available,    //todo
     output      CP_RT_PACKET    cp_rt_packet,   //todo
@@ -91,6 +92,11 @@ module ROB (
                     ROB_content_n[k].cp_bit  = 1'b0;
                     ROB_content_n[k].valid   = 1'b0;
                     ROB_content_n[k].IsBranch= dp_rob_packet.IsBranch;
+                    if (dp_rob_packet.mem) begin
+                        ROB_content_n[k].lsq_idx = lsq_idx;
+                    end
+                    ROB_content_n[k].wr_mem  = dp_rob_packet.wr_mem;
+                    //ROB_content_n[k].inst= dp_rob_packet.IsBranch;
                     // ROB_content_n[k].CantComplete = 1'b0;
                 end
             end
@@ -102,7 +108,13 @@ module ROB (
                 ROB_content_n[head_idx].ep_bit = 1'b0;
                 if (Branch_Miss) begin
                     tail_n = head + 1;
-                    ROB_content_n[head_idx + 1] = 0;
+                    //ROB_content_n[head_idx] = ROB_content[head_idx];
+                    for (integer i = 0; i < `ROB_SIZE; i++) begin
+                        if (i != head_idx) begin
+                            ROB_content_n[i] = 0;
+                        end
+                    end
+                    //ROB_content_n[head_idx] = ROB_content[head_idx];
                 end
             end
             head_n = head + 1;
@@ -156,6 +168,20 @@ module ROB (
             rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
             rob_rs_packet.valid_vector[1] = 1'b1; 
             rob_rs_packet.complete[1] = 1'b1;
+        end
+
+        if (lsq_input.valid && (lsq_input.Tag == mt_rob_packet.RegS1_Tag) && mt_rob_packet.valid_vector[0]) begin
+            rob_rs_packet.rs1_value = lsq_input.Value;
+            rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
+            rob_rs_packet.valid_vector[0] = 1'b1; 
+            rob_rs_packet.complete[0] = 1'b1;
+        end
+
+        if (lsq_input.valid && (lsq_input.Tag == mt_rob_packet.RegS2_Tag) && mt_rob_packet.valid_vector[1]) begin
+            rob_rs_packet.rs2_value = lsq_input.Value;
+            rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
+            rob_rs_packet.valid_vector[1] = 1'b1; 
+            rob_rs_packet.complete[1] = 1'b1;
         end   
     end
 
@@ -180,7 +206,7 @@ module ROB (
     assign IsBranch      = ROB_content[head_idx].IsBranch;
 
     assign Branch_Miss   = (ROB_content[head_idx].ep_bit && (Branch_Target != ROB_content[head_idx].NPC)) 
-                                    || (ROB_content[head_idx].IsBranch && !ROB_content[head_idx].ep_bit && (ROB_content[head_idx].NPC != (ROB_content[head_idx].PC + 4)));
+                                    || (ROB_content[head_idx].cp_bit && ROB_content[head_idx].IsBranch && !ROB_content[head_idx].ep_bit && (ROB_content[head_idx].NPC != (ROB_content[head_idx].PC + 4)));
 
     //for full? rob_entry_available
     logic [$clog2(`ROB_SIZE)-1:0] next_tail;

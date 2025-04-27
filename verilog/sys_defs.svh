@@ -425,23 +425,27 @@ typedef struct packed {
     logic                       rd_mem;        // Does inst read memory?
     logic                       wr_mem;        // Does inst write memory?
 	logic [`ROB_ADDR_BITS-1:0]  Tag;  // #ROB
+    logic                       rd_unsigned;
 } DP_LSQ_PACKET;
 
 
  typedef struct packed {
 	logic                            valid; // If low, the data in this struct is garbage
     logic [$clog2(`ROB_SIZE)-1:0]    rob_entry;//4:0
+    logic [`XLEN-1:0]           PC;
 } MAPTABLE;
 typedef struct packed {
     logic [4:0]         dest_reg_idx;  // destination (writeback) register index
     logic [`XLEN-1:0]   PC;
     logic [`XLEN-1:0]   NPC;
     logic IsBranch;
+    logic mem;
+    logic wr_mem;
 } DP_ROB_PACKET;
 
 
 
-
+`define LSQ_SIZE 8
 typedef struct packed {
     INST                inst;//todo
 	logic [4:0] 		reg_idx; //enabletodo
@@ -456,6 +460,7 @@ typedef struct packed {
     logic               CantComplete;
     logic [`XLEN-1:0]   alu_result;  // alu_result
     logic               IsBranch;
+    logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
 } ROB_ENTRY;
 
 
@@ -495,12 +500,13 @@ typedef struct packed {
     logic [`XLEN-1:0]   PC;
     logic [`XLEN-1:0]   NPC;
     logic [4:0]         dest_reg_idx;
+    logic               rd_unsigned;
   } lsq_entry_t;
 
-`define LSQ_SIZE 8
 //SQ
   typedef struct packed {
     logic                           valid;
+    logic                           h_valid;
     logic [`XLEN-1:0]               addr;
     logic [31:0]                    data;
     MEM_SIZE                        mem_size;
@@ -510,6 +516,7 @@ typedef struct packed {
     logic [`XLEN-1:0]               PC;
     logic [`XLEN-1:0]               NPC;
     logic [4:0]                     dest_reg_idx;
+    logic               rd_unsigned;
   } LSQ_ENTRY;
 
 typedef struct packed {
@@ -518,6 +525,7 @@ typedef struct packed {
     logic [`XLEN-1:0]               addr;
     logic [`XLEN-1:0]               data;
     logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
+    logic                           is_store;
     MEM_SIZE                        mem_size;
 } EX_LSQ_PACKET;
 

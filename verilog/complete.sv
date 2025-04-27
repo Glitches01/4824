@@ -55,6 +55,6 @@ module complete (
     // back the old NPC as the return address. Note that ALL branches
     // and jumps write back the 'link' value, but those that don't
     // use it specify ZERO_REG as the destination.
-    assign wb_regfile_data = (ex_reg.take_branch) ? ex_reg.NPC : ex_reg.alu_result;
+    assign wb_regfile_data = (ex_reg.take_branch) ? (ex_reg.PC + 4) : ex_reg.alu_result;//todo
 
 endmodule // stage_wb

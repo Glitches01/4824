@@ -101,6 +101,7 @@ module execute (
     assign ex_lsq_packet.data       = ex_packet.rs2_value;
     assign ex_lsq_packet.lsq_idx    = rs_ex_packet.lsq_idx;
     assign ex_lsq_packet.mem_size   = ex_packet.mem_size;
+    assign ex_lsq_packet.is_store   = ex_packet.wr_mem;
 
 
     logic [`XLEN-1:0] opa_mux_out, opb_mux_out;
@@ -117,7 +118,7 @@ module execute (
     assign ex_packet.halt         = rs_ex_packet.halt;
     assign ex_packet.illegal      = rs_ex_packet.illegal;
     assign ex_packet.csr_op       = rs_ex_packet.csr_op;
-    assign ex_packet.valid        = rs_ex_packet.valid;
+    assign ex_packet.valid        = rs_ex_packet.valid;// && !{ex_packet.rd_mem, ex_packet.wr_mem};
     assign ex_packet.Tag          = rs_ex_packet.Tag;
 
     // Break out the signed/unsigned bit and memory read/write size

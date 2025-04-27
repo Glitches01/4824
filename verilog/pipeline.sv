@@ -30,7 +30,7 @@ module pipeline (
     output logic [4:0]       pipeline_commit_wr_idx,
     output logic [`XLEN-1:0] pipeline_commit_wr_data,
     output logic             pipeline_commit_wr_en,
-    output logic [`XLEN-1:0] pipeline_commit_NPC
+    output logic [`XLEN-1:0] pipeline_commit_PC
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
@@ -61,7 +61,7 @@ module pipeline (
 
     // Outputs from MEM-Stage to memory
     logic [`XLEN-1:0] proc2Dmem_addr;
-    logic [`XLEN-1:0] proc2Dmem_data;
+    logic [63:0] proc2Dmem_data;
     logic [1:0]       proc2Dmem_command;
     MEM_SIZE          proc2Dmem_size;
 
@@ -119,7 +119,7 @@ module pipeline (
     // && (!proc2Dmem_command);
     IF_ICACHE_PACKET IF_Icache_packet;
     ICACHE_IF_PACKET Icache_IF_packet;
-
+    logic Branch_Miss;
     icache u_icache(
         //system signal
         .clock                  (clock),
@@ -132,6 +132,9 @@ module pipeline (
         .Imem2proc_response     (mem2proc_response),  // from mem, note the "I"
         .Imem2proc_data         (mem2proc_data),      // from mem
         .Imem2proc_tag          (mem2proc_tag),       // from mem
+
+        .proc2Dmem_command      (proc2Dmem_command),
+        .Branch_Miss            (Branch_Miss),
 
         //From FETCH
         .proc2Icache_addr       (IF_Icache_packet.Icache_addr_in),   //addr, request
@@ -157,7 +160,7 @@ module pipeline (
 
     logic [`XLEN-1:0] Branch_PC, PredictionPC;
     logic [`XLEN-1:0] Branch_Target;
-    logic take_branch, IsBranch, Branch_Miss, predict_taken, IsFull;
+    logic take_branch, IsBranch, predict_taken, IsFull;
     stage_if u_stage_if (
         // Inputs
         .clock                  (clock),
@@ -229,6 +232,7 @@ module pipeline (
     DP_RS_PACKET  dp_rs_packet;
     DP_ROB_PACKET dp_rob_packet;
     MT_ROB_PACKET mt_rob_packet;
+    CP_RT_PACKET    cp_rt_packet;   //todo
     assign rs_mt_rob_enable = dp_rs_packet.valid && available && ((!dp_rs_packet.mem && ((!busy[7]) || (!busy[6]) || (!busy[5]) || (!busy[4]) ||(!busy[3]) || (!busy[2]) || (!busy[1]) || (!busy[0])))
                          || (dp_rs_packet.mem && ((!busy[8]) || (!busy[9])  || (!busy[10]) || (!busy[11]) ))) && enable;
     Dispatch u_Dispatch(
@@ -245,6 +249,7 @@ module pipeline (
         .dp_rob_packet      (dp_rob_packet),
         .dp_lsq_packet      (dp_lsq_packet),
         .mt_rob_packet      (mt_rob_packet),
+        .cp_rt_packet       (cp_rt_packet),
 
 
         .wb_regfile_en      (cp_rt_packet.rob_entry.cp_bit),  // register write enable
@@ -255,7 +260,7 @@ module pipeline (
     CDB_PACKET             lsq2cdb_packet; 
 
     ROB_RS_PACKET   rob_rs_packet;//todo
-    CP_RT_PACKET    cp_rt_packet;   //todo
+    logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
     ROB rob(
         //Inputs
         .reset              (reset),
@@ -265,6 +270,7 @@ module pipeline (
 
         .CDB_packet_in      (CDB_packet),    // from CDB//todo
         .lsq_input          (lsq2cdb_packet),
+        .lsq_idx            (lsq_idx),
 
         .dp_rob_packet      (dp_rob_packet),    // From dispatch stage, decoded get 1. destreg 2. pc
         .enable             (rs_mt_rob_enable),//todo
@@ -291,7 +297,6 @@ module pipeline (
     //                                              //
     ////////////////////////////////////////////////// 
     RS_EX_PACKET rs_ex_packet;
-    logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
     logic lsq_available;
     ReservationStation u_ReservationStation(
         .clock              (clock),
@@ -322,6 +327,9 @@ module pipeline (
     lsq u_lsq(
         .clock                  (clock),
         .reset                  (reset),
+
+        .Branch_Miss            (Branch_Miss),
+        .cp_rt_packet           (cp_rt_packet),
 
         .dp_lsq_packet          (dp_lsq_packet),
         .enable                 ((rs_mt_rob_enable && dp_rs_packet.mem)),
@@ -398,6 +406,6 @@ module pipeline (
     assign pipeline_commit_wr_en   = cp_rt_packet.rob_entry.cp_bit && (cp_rt_packet.rob_entry.reg_idx != 5'h0);
     assign pipeline_commit_wr_idx  = cp_rt_packet.rob_entry.reg_idx;
     assign pipeline_commit_wr_data = cp_rt_packet.rob_entry.value;
-    assign pipeline_commit_NPC     = cp_rt_packet.rob_entry.NPC;
+    assign pipeline_commit_PC     = cp_rt_packet.rob_entry.PC;
 
 endmodule // pipeline

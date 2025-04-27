@@ -411,7 +411,7 @@ module ResSta #(
                 rs.ready[1]  <= 1;
                 rs.received[1] <= 1;
             end
-            if(cdb_packet.valid && (cdb_packet.Tag == rs.Tag)) begin
+            if(cdb_packet.valid && (cdb_packet.Tag == rs.Tag) && (rs.PC == cdb_packet.PC)) begin
                 rs.busy <= 0;
             end
         end
@@ -427,7 +427,7 @@ module ResSta #(
                 rs.ready[1]  <= 1;
                 rs.received[1] <= 1;
             end
-            if(lsq_input.valid && (lsq_input.Tag == rs.Tag)) begin
+            if(lsq_input.valid && (lsq_input.Tag == rs.Tag) && (rs.PC == lsq_input.PC)) begin
                 rs.busy <= 0;
             end
         end
@@ -516,7 +516,7 @@ module ResSta_MEM #(
                 rs.ready[1]  <= 1;
                 rs.received[1] <= 1;
             end
-            if(cdb_packet.valid && (cdb_packet.Tag == rs.Tag)) begin
+            if(cdb_packet.valid && (cdb_packet.Tag == rs.Tag) && (rs.PC == cdb_packet.PC)) begin
                 rs.busy <= 0;
             end
         end
@@ -532,7 +532,7 @@ module ResSta_MEM #(
                 rs.ready[1]  <= 1;
                 rs.received[1] <= 1;
             end
-            if(lsq_input.valid && (lsq_input.Tag == rs.Tag)) begin
+            if(lsq_input.valid && (lsq_input.Tag == rs.Tag) && (rs.PC == lsq_input.PC)) begin
                 rs.busy <= 0;
             end
         end
@@ -540,7 +540,7 @@ module ResSta_MEM #(
         if ((issue)) begin//todo
             rs.ready[0]         <= 1'b0;
             rs.ready[1]         <= 1'b0;
-            rs.busy             <= rs.rd_mem;
+            //rs.busy             <= rs.rd_mem;
         end
     end
 endmodule

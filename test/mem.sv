@@ -42,6 +42,10 @@ module mem (
     wire valid_address = (proc2mem_addr[2:0]==3'b0) &
                          (proc2mem_addr<`MEM_SIZE_IN_BYTES);
 
+    // always_ff @( negedge clk ) begin
+    //     $display("%x",unified_memory[]);
+    // end
+
     always @(negedge clk) begin
         next_mem2proc_tag      = 4'b0;
         next_mem2proc_response = 4'b0;

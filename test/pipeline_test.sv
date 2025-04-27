@@ -54,7 +54,7 @@ module testbench;
     logic [4:0]       pipeline_commit_wr_idx;
     logic [`XLEN-1:0] pipeline_commit_wr_data;
     logic             pipeline_commit_wr_en;
-    logic [`XLEN-1:0] pipeline_commit_NPC;
+    logic [`XLEN-1:0] pipeline_commit_PC;
 
     logic [`XLEN-1:0] if_NPC_dbg;
     logic [31:0]      if_inst_dbg;
@@ -95,7 +95,7 @@ module testbench;
         .pipeline_commit_wr_data  (pipeline_commit_wr_data),
         .pipeline_commit_wr_idx   (pipeline_commit_wr_idx),
         .pipeline_commit_wr_en    (pipeline_commit_wr_en),
-        .pipeline_commit_NPC      (pipeline_commit_NPC)
+        .pipeline_commit_PC      (pipeline_commit_PC)
 
         // .if_NPC_dbg       (if_NPC_dbg),
         // .if_inst_dbg      (if_inst_dbg),
@@ -145,9 +145,13 @@ module testbench;
         real cpi;
         begin
             cpi = (clock_count + 1.0) / instr_count;
-            $display("@@  %0d cycles / %0d instrs = %f CPI\n@@",
+            // $display("@@  %0d cycles / %0d instrs = %f CPI\n@@",
+            //           clock_count+1, instr_count, cpi);
+            // $display("@@  %4.2f ns total time to execute\n@@\n",
+            //           clock_count * `CLOCK_PERIOD);
+            $fdisplay(wb_fileno,"@@  %0d cycles / %0d instrs = %f CPI\n@@",
                       clock_count+1, instr_count, cpi);
-            $display("@@  %4.2f ns total time to execute\n@@\n",
+            $fdisplay(wb_fileno,"@@  %4.2f ns total time to execute\n@@\n",
                       clock_count * `CLOCK_PERIOD);
         end
     endtask // task show_clk_count
@@ -268,15 +272,35 @@ module testbench;
             if (pipeline_completed_insts > 0) begin
                 if(pipeline_commit_wr_en)
                     $fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
-                              pipeline_commit_NPC - 4,
+                              pipeline_commit_PC,
                               pipeline_commit_wr_idx,
                               pipeline_commit_wr_data);
                 else
-                    $fdisplay(wb_fileno, "PC=%x, ---", pipeline_commit_NPC - 4);
+                    $fdisplay(wb_fileno, "PC=%x, ---", pipeline_commit_PC);
             end
 
+            // if (pipeline_completed_insts > 0) begin
+            //     if(pipeline_commit_wr_en)
+            //         $fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
+            //                   pipeline_commit_PC,
+            //                   pipeline_commit_wr_idx,
+            //                   pipeline_commit_wr_data);
+            //     else
+            //         $fdisplay(wb_fileno, "[%t] PC=%x, ---", 
+            //                   $realtime,  // 添加仿真时间
+            //                   pipeline_commit_PC);
+            // end
+
+            // if (proc2mem_command > 0) begin
+            //         $fdisplay(wb_fileno, "[%t] MEM_COMMAND=%x, MEM_ADDR=%x, MEM_DATA=%x",
+            //                   $realtime,  // 添加仿真时间
+            //                   proc2mem_command,
+            //                   proc2mem_addr,
+            //                   proc2mem_data);
+            // end
+
             // deal with any halting conditions
-            if(pipeline_error_status != NO_ERROR || debug_counter > 1000000) begin
+            if(pipeline_error_status != NO_ERROR || debug_counter > 10000000) begin
                 $display("@@@ Unified Memory contents hex on left, decimal on right: ");
                 show_mem_with_decimal(0,`MEM_64BIT_LINES - 1);
                 // 8Bytes per line, 16kB total

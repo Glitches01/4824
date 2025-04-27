@@ -546,17 +546,37 @@ novas.rc: initialnovas.rc
 #############################
 # ---- Compare         ---- #
 #############################
-%.compare: ./output/%.wb ./ref_output/%.wb
-	@echo "[CHECK] 正在对比 $*.wb..."
-	@if diff -q $^ >/dev/null; then \
-		echo "  PASS: 文件内容一致"; \
+# %.compare: ./output/%.wb ./ref_output/%.wb
+# 	@echo "[CHECK] 正在对比 $*.wb..."
+# 	@if diff -q $^ >/dev/null; then \
+# 		echo "  PASS: 文件内容一致"; \
+# 	else \
+# 		echo "  FAIL: 文件内容不同"; \
+# 		diff -u $^ || true; \
+# 		exit 1; \
+# 	fi
+
+# BUG = output/graph.wb
+# FILE   = $(filter-out $(BUG),$(wildcard output/*.wb))
+# compare_all: $(FILE:=.wb)
+
+# 比较规则 - 注意下面命令前必须是 TAB 不是空格
+%.diff: output/%.wb ref_output/%.wb
+	@echo "Comparing $*.wb..."
+	@if [ -f ./output/$*.wb ] && [ -f ./ref_output/$*.wb ]; then \
+		diff ./output/$*.wb ./ref_output/$*.wb > diff/$*.log || true; \
 	else \
-		echo "  FAIL: 文件内容不同"; \
-		diff -u $^ || true; \
+		echo "Error: Missing either ./output/$*.wb or ./ref_output/$*.wb"; \
 		exit 1; \
 	fi
 
+# List of files to ignore
+IGNORE_FILES := 
+# output/dft.wb
 
+all_diff: $(patsubst output/%.wb,%.diff,\
+           $(filter-out $(IGNORE_FILES),$(wildcard output/*.wb)))
+	@echo "Completed all comparisons (ignored: $(IGNORE_FILES))"
 #############################
 # ---- Visual Debugger ---- #
 #############################

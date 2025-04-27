@@ -21,6 +21,8 @@ module Dispatch (
 
     input logic take_branch,
     //output ID_IB_PACKET id_ib_packet,
+
+    input CP_RT_PACKET    cp_rt_packet,   //todo
     
     ///////////////////////////////////////////////////////////////////////////////////////
     //      From LSA, RS, RoB to determine the dp_packets that could be sent in this cycle
@@ -54,6 +56,7 @@ module Dispatch (
         dp_lsq_packet.rd_mem        = dp_rs_packet.rd_mem;
         dp_lsq_packet.wr_mem        = dp_rs_packet.wr_mem;
         dp_lsq_packet.Tag           = rob_mt_packet.Tag;
+        dp_lsq_packet.rd_unsigned   = ib_id_packet.inst.r.funct3[2];
     end
 /////////////////////////////////////////////////////////////////////////
 //                                                                     //
@@ -142,6 +145,8 @@ module Dispatch (
     assign dp_rob_packet.PC             = dp_rs_packet.PC;
     assign dp_rob_packet.NPC            = dp_rs_packet.NPC;
     assign dp_rob_packet.IsBranch       = (dp_rs_packet.cond_branch || dp_rs_packet.uncond_branch);
+    assign dp_rob_packet.mem            = dp_rs_packet.mem;
+    assign dp_rob_packet.wr_mem         = dp_rs_packet.wr_mem;
 
     MAPTABLE rob_entry1;
     MAPTABLE rob_entry2;
@@ -170,8 +175,11 @@ module Dispatch (
 
         .has_dest_reg       (has_dest_reg),
         .dest_reg_idx       (dp_rs_packet.dest_reg_idx),
+        .PC                 (dp_rs_packet.PC),
 
-        .rob_tail           (rob_mt_packet.Tag)
+        .rob_tail           (rob_mt_packet.Tag),
+
+        .cp_rt_packet       (cp_rt_packet)
     );
     
 endmodule
@@ -194,8 +202,11 @@ module MapTable #(
 
     input       has_dest_reg,
     input [4:0] dest_reg_idx,
+    input logic [`XLEN-1:0]           PC,
 
-    input  [$clog2(`ROB_SIZE)-1:0] rob_tail
+    input  [$clog2(`ROB_SIZE)-1:0] rob_tail,
+
+    input CP_RT_PACKET    cp_rt_packet   //todo
 );
     MAPTABLE maptable[0:31];
     assign rob_entry1 = maptable[read_idx_1];
@@ -210,9 +221,23 @@ module MapTable #(
             for (integer i = 0; i < 32; i = i + 1) begin
                 maptable[i] <= 0;
             end
-        end else if(has_dest_reg && enable) begin
-            maptable[dest_reg_idx].rob_entry <= rob_tail;
-            maptable[dest_reg_idx].valid <= 1;
+        end else begin
+            
+            if(has_dest_reg && enable) begin
+                maptable[dest_reg_idx].rob_entry <= rob_tail;
+                maptable[dest_reg_idx].valid <= 1;
+                //maptable[dest_reg_idx].PC   <= PC;
+            end
+
+            if (cp_rt_packet.rob_entry.cp_bit && (cp_rt_packet.Tag == maptable[cp_rt_packet.rob_entry.reg_idx].rob_entry)) begin
+                if (has_dest_reg && enable && (dest_reg_idx == cp_rt_packet.rob_entry.reg_idx)) begin
+                    maptable[dest_reg_idx].rob_entry <= rob_tail;
+                    maptable[dest_reg_idx].valid     <= 1;
+                end else begin
+                    maptable[cp_rt_packet.rob_entry.reg_idx].valid <= 1'b0;
+                end
+                //maptable[cp_rt_packet.rob_entry.reg_idx].valid <= 1'b0;
+            end
         end
     end
 

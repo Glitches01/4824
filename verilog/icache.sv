@@ -42,6 +42,9 @@ module icache (
     input [63:0] Imem2proc_data,
     input [3:0]  Imem2proc_tag,
 
+    input BUS_COMMAND proc2Dmem_command,
+    input Branch_Miss,
+
     // From fetch stage
     input [`XLEN-1:0] proc2Icache_addr,
 
@@ -91,15 +94,16 @@ module icache (
     // Set mem tag to zero if we changed_addr, and keep resetting while there is
     // a miss_outstanding. Then set to zero when we got_mem_data.
     // (this relies on Imem2proc_response being zero when there is no request)
-    wire update_mem_tag = changed_addr || miss_outstanding || got_mem_data;
+    wire update_mem_tag = (changed_addr || miss_outstanding || got_mem_data) && !proc2Dmem_command;
 
     // If we have a new miss or still waiting for the response tag, we might
     // need to wait for the response tag because dcache has priority over icache
     wire unanswered_miss = changed_addr ? !Icache_valid_out
-                                        : miss_outstanding && (Imem2proc_response == 0);
+                                        : (miss_outstanding && (Imem2proc_response == 0)) || proc2Dmem_command;
 
     // Keep sending memory requests until we receive a response tag or change addresses
-    assign proc2Imem_command = (miss_outstanding && !changed_addr) ? BUS_LOAD : BUS_NONE;
+    logic  Branch_Status;
+    assign proc2Imem_command = ((miss_outstanding && !changed_addr) || Branch_Status) ? BUS_LOAD : BUS_NONE;//todo
     assign proc2Imem_addr    = {proc2Icache_addr[31:3],3'b0};
 
     // ---- Cache state registers ---- //
@@ -115,8 +119,14 @@ module icache (
             last_index       <= current_index;
             last_tag         <= current_tag;
             miss_outstanding <= unanswered_miss;
-            if (update_mem_tag) begin
+            if (update_mem_tag || Branch_Status) begin
                 current_mem_tag <= Imem2proc_response;
+            end
+            if (Branch_Miss) begin
+                current_mem_tag <= 0;
+                Branch_Status <= 1;
+            end else begin
+                Branch_Status <= 0;
             end
             if (got_mem_data) begin // If data came from memory, meaning tag matches
                 icache_data[current_index].data  <= Imem2proc_data;
