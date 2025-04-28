@@ -580,7 +580,7 @@ typedef struct packed {
     logic [`XLEN-1:0] PC; 
 	logic [`XLEN-1:0] NPC;         // pc + 4, forwarded
 	logic             take_branch; // is this a taken branch?, forwarded
-    INST              inst; 		// forwarded
+    //INST              inst; 		// forwarded
 	logic [4:0]       dest_reg_idx; // forwarded
 	logic             halt, illegal; // forwarded
 	logic             done;

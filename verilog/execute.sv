@@ -33,9 +33,9 @@ module alu (
     // We let verilog do the full 32-bit multiplication for us.
     // This gives a large clock period.
     // You will replace this with your pipelined multiplier in project 4.
-    assign signed_mul   = signed_opa * signed_opb;
-    assign unsigned_mul = opa * opb;
-    assign mixed_mul    = signed_opa * opb;
+    assign signed_mul   = signed_opa * signed_opb;//todo
+    assign unsigned_mul = opa * opb;//todo
+    assign mixed_mul    = signed_opa * opb;//todo
 
     always_comb begin
         case (func)

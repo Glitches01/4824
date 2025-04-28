@@ -349,7 +349,7 @@ module ResSta #(
     input DP_RS_PACKET              dp_rs_packet,
     //rob and mt and dp  value
     input [$clog2(`ROB_SIZE)-1:0]   RS1_Tag, RS2_Tag, Tag,
-    input [`XLEN:0]                 rs1_value, rs2_value,
+    input [`XLEN-1:0]                 rs1_value, rs2_value,
     input [1:0] needTag,
     //deassert rs
     input                           ready[0:1],
@@ -452,7 +452,7 @@ module ResSta_MEM #(
     input DP_RS_PACKET              dp_rs_packet,
     //rob and mt and dp  value
     input [$clog2(`ROB_SIZE)-1:0]   RS1_Tag, RS2_Tag, Tag,
-    input [`XLEN:0]                 rs1_value, rs2_value,
+    input [`XLEN-1:0]                 rs1_value, rs2_value,
     input [1:0] needTag,
     input logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx,
     //deassert rs
