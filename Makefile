@@ -98,7 +98,7 @@
 # there should be no need to change anything for project 3
 
 # this is a global clock period variable used in the tcl script and referenced in testbenches
-export CLOCK_PERIOD = 10.0
+export CLOCK_PERIOD = 2.5
 
 # Path variables
 export RISCV32_HOME = /homes/user/fac/tk3070/tmp/riscv-gcc/riscv-32/bin
@@ -574,8 +574,7 @@ novas.rc: initialnovas.rc
 IGNORE_FILES := 
 # output/dft.wb
 
-all_diff: $(patsubst output/%.wb,%.diff,\
-           $(filter-out $(IGNORE_FILES),$(wildcard output/*.wb)))
+all_diff: $(patsubst output/%.wb,%.diff,$(filter-out $(IGNORE_FILES),$(wildcard output/*.wb)))
 	@echo "Completed all comparisons (ignored: $(IGNORE_FILES))"
 #############################
 # ---- Visual Debugger ---- #
