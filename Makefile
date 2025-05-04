@@ -571,7 +571,7 @@ novas.rc: initialnovas.rc
 	fi
 
 # List of files to ignore
-IGNORE_FILES := 
+IGNORE_FILES := loadstore
 # output/dft.wb
 
 all_diff: $(patsubst output/%.wb,%.diff,$(filter-out $(IGNORE_FILES),$(wildcard output/*.wb)))
