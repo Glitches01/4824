@@ -91,7 +91,7 @@ Responses from the dcache are interpreted according to the memory size and sign-
 
 
 ## Testing
-The Testing is based on VCS+Verdi Simulation. And for the output files, we will get an log file in diff file directory. This will show the difference of writeback values of golden reference and our design. If you want to show the results, you could do the following makefile commands:
+The Testing is based on VCS+Verdi Simulation. And we have makefile command for generating the output files, through which we will get an log file in diff file directory. This will show the difference of writeback values of golden reference and our design. If you want to show the results, you could do the following makefile commands:
 
 Execute `make simulate_all` And `make all_diff` to get the diff files
 
