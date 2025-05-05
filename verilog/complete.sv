@@ -34,18 +34,6 @@ module complete (
         
     end
 
-    // assign valid = ~pos & ex_reg.valid;
-    // always_ff @( posedge clock ) begin : posedge_detect
-    //     if (reset) begin
-    //         pos <= 0;
-    //     end else begin
-    //         pos <= ex_reg.valid;
-    //     end
-    // end
-
-    // This enable computation is sort of overkill since the reg file
-    // also handles the `ZERO_REG case, but there's no harm in putting this here
-    // the valid check is also somewhat redundant
     assign wb_regfile_en = ex_reg.valid && (ex_reg.dest_reg_idx != `ZERO_REG);
 
     assign wb_regfile_idx = ex_reg.dest_reg_idx;

@@ -11,16 +11,16 @@
 `include "verilog/sys_defs.svh"
 
 module pipeline (
-    input        clock,             // System clock
-    input        reset,             // System reset
-    input [3:0]  mem2proc_response, // Tag from memory about current request
-    input [63:0] mem2proc_data,     // Data coming back from memory
-    input [3:0]  mem2proc_tag,      // Tag from memory about current reply
+    input        clock,                        // System clock
+    input        reset,                        // System reset
+    input [3:0]  mem2proc_response,            // Tag from memory about current request
+    input [63:0] mem2proc_data,                // Data coming back from memory
+    input [3:0]  mem2proc_tag,                 // Tag from memory about current reply
 
     output logic [1:0]       proc2mem_command, // Command sent to memory
     output logic [`XLEN-1:0] proc2mem_addr,    // Address sent to memory
     output logic [63:0]      proc2mem_data,    // Data sent to memory
-`ifndef CACHE_MODE // no longer sending size to memory
+`ifndef CACHE_MODE                             // no longer sending size to memory
     output MEM_SIZE          proc2mem_size,    // Data size sent to memory
 `endif
 
@@ -70,41 +70,21 @@ module pipeline (
     logic [4:0]       wb_regfile_idx;
     logic [`XLEN-1:0] wb_regfile_data;
 
-//////////////////////////////////////////////////
-//                                              //
-//                Memory Outputs                //
-//                                              //
-//////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //                                              //
+    //                Memory Outputs                //
+    //                                              //
+    //////////////////////////////////////////////////
 
     // these signals go to and from the processor and memory
     // we give precedence to the mem stage over instruction fetch
     // note that there is no latency in project 3
     // but there will be a 100ns latency in project 4
-
-//     always_comb begin
-//         if (proc2Dmem_command != BUS_NONE) begin // read or write DATA from memory
-//             proc2mem_command = proc2Dmem_command;
-//             proc2mem_addr    = proc2Dmem_addr;
-// `ifndef CACHE_MODE
-//             proc2mem_size    = proc2Dmem_size;  // size is never DOUBLE in project 3
-// `endif
-//         end else begin                          // read an INSTRUCTION from memory
-//             proc2mem_command = proc2Imem_command;
-//             proc2mem_addr    = proc2Imem_addr;
-// `ifndef CACHE_MODE
-//             proc2mem_size    = DOUBLE;          // instructions load a full memory line (64 bits)
-// `endif
-//         end
-//         proc2mem_data = {32'b0, proc2Dmem_data};
-//     end
     logic [`XLEN-1:0]       Icache2mem_addr; // goes to mem module, imem part
     BUS_COMMAND             Icache2mem_command;
-    assign proc2mem_command = (proc2Dmem_command == BUS_NONE) ? Icache2mem_command : proc2Dmem_command;//todo
+    assign proc2mem_command = (proc2Dmem_command == BUS_NONE) ? Icache2mem_command : proc2Dmem_command;
     assign proc2mem_addr    = (proc2Dmem_command == BUS_NONE) ? Icache2mem_addr : proc2Dmem_addr;
     assign proc2mem_data    =  proc2Dmem_data;
-    // assign proc2mem_command = Icache2mem_command;
-    // assign proc2mem_addr    = Icache2mem_addr;
-    // assign proc2mem_data    =  proc2Dmem_data;
 
     /////////////////////////////////////////////////////////////////////////
     //                                                                     //
@@ -114,7 +94,7 @@ module pipeline (
     //                                                                     //
     /////////////////////////////////////////////////////////////////////////
     logic mem2Icache_ack;
-    assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command) && (!proc2Dmem_command);//todo
+    assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command) && (!proc2Dmem_command);
     //assign mem2Icache_ack = (|mem2proc_response) && (|Icache2mem_command);
     // && (!proc2Dmem_command);
     IF_ICACHE_PACKET IF_Icache_packet;
@@ -125,9 +105,6 @@ module pipeline (
         .clock                  (clock),
         .reset                  (reset),
 
-        // //From Retire
-        // .squash_en              (1'b0), //todo
-
         //From MEM
         .Imem2proc_response     (mem2proc_response),  // from mem, note the "I"
         .Imem2proc_data         (mem2proc_data),      // from mem
@@ -137,10 +114,10 @@ module pipeline (
         .Branch_Miss            (Branch_Miss),
 
         //From FETCH
-        .proc2Icache_addr       (IF_Icache_packet.Icache_addr_in),   //addr, request
+        .proc2Icache_addr       (IF_Icache_packet.Icache_addr_in),    //addr, request
         //To Fetch
         .Icache_data_out        (Icache_IF_packet.Icache_data_out),   //data, hit, valid
-        .Icache_valid_out       (Icache_IF_packet.Icache_valid_out),   //data, hit, valid
+        .Icache_valid_out       (Icache_IF_packet.Icache_valid_out),  //data, hit, valid
         //To MEM
         .proc2Imem_command      (Icache2mem_command),  // output to mem
         .proc2Imem_addr         (Icache2mem_addr)      // output to mem
@@ -154,7 +131,7 @@ module pipeline (
     //                                              //
     //////////////////////////////////////////////////
     EX_PACKET ex_packet;
-    CDB_PACKET              CDB_packet;      //todo
+    CDB_PACKET              CDB_packet;
     EX_PACKET ex_reg;
     IF_IB_PACKET if_ib_packet;
 
@@ -194,8 +171,8 @@ module pipeline (
     IB_ID_PACKET ib_id_packet;
     logic rs_available;
     logic [11:0] busy;
-    logic squash = 1'b0;//todo
-    logic read_enable, enable;//todo
+    logic squash = 1'b0;
+    logic read_enable, enable;
     logic available;//rob available
 
     assign read_enable = available && 1 && rs_available;
@@ -206,12 +183,10 @@ module pipeline (
 
         .squash                 (Branch_Miss),
         .branch_target          (Branch_Target),
-        .read_enable            (read_enable),//todo
-        .ack                    (rs_mt_rob_enable),//todo
+        .read_enable            (read_enable),
+        .ack                    (rs_mt_rob_enable),
 
         .if_ib_packet           (if_ib_packet),
-        // .PredictionPC           (PredictionPC),
-        // .predict_taken          (predict_taken),
 
         .enable                 (enable),
         .ib_id_packet           (ib_id_packet),
@@ -232,14 +207,14 @@ module pipeline (
     DP_RS_PACKET  dp_rs_packet;
     DP_ROB_PACKET dp_rob_packet;
     MT_ROB_PACKET mt_rob_packet;
-    CP_RT_PACKET    cp_rt_packet;   //todo
+    CP_RT_PACKET    cp_rt_packet;   
     assign rs_mt_rob_enable = dp_rs_packet.valid && available && ((!dp_rs_packet.mem && ((!busy[7]) || (!busy[6]) || (!busy[5]) || (!busy[4]) ||(!busy[3]) || (!busy[2]) || (!busy[1]) || (!busy[0])))
                          || (dp_rs_packet.mem && ((!busy[8]) || (!busy[9])  || (!busy[10]) || (!busy[11]) ))) && enable;
     Dispatch u_Dispatch(
         .clock              (clock),
         .reset              (reset),
 
-        .enable             (rs_mt_rob_enable),//todo
+        .enable             (rs_mt_rob_enable),
         //input
         .ib_id_packet       (ib_id_packet),
         .rob_mt_packet      (rob_mt_packet),
@@ -254,35 +229,35 @@ module pipeline (
 
         .wb_regfile_en      (cp_rt_packet.rob_entry.cp_bit),  // register write enable
         .wb_regfile_idx     (cp_rt_packet.rob_entry.reg_idx), // register write index
-        .wb_regfile_data    (cp_rt_packet.rob_entry.value) // register write data
+        .wb_regfile_data    (cp_rt_packet.rob_entry.value)    // register write data
     );
 
     CDB_PACKET             lsq2cdb_packet; 
 
-    ROB_RS_PACKET   rob_rs_packet;//todo
+    ROB_RS_PACKET   rob_rs_packet;
     logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx;
     ROB rob(
         //Inputs
         .reset              (reset),
         .clock              (clock),
 
-        .squash_signal      (1'b0),    // squash signal in
+        .squash_signal      (1'b0),          // squash signal in
 
-        .CDB_packet_in      (CDB_packet),    // from CDB//todo
+        .CDB_packet_in      (CDB_packet),    // from CDB
         .lsq_input          (lsq2cdb_packet),
         .lsq_idx            (lsq_idx),
 
         .dp_rob_packet      (dp_rob_packet),    // From dispatch stage, decoded get 1. destreg 2. pc
-        .enable             (rs_mt_rob_enable),//todo
+        .enable             (rs_mt_rob_enable),
         .mt_rob_packet      (mt_rob_packet),    // From Maptable
 
 
 
         //Outputs
-        .available          (available),    // going to DP_stage
+        .available          (available),       // going to DP_stage
         .cp_rt_packet       (cp_rt_packet),    // going to retire stage
-        .rob_rs_packet      (rob_rs_packet),  // going to RS
-        .rob_mt_packet      (rob_mt_packet),    // going to maptable
+        .rob_rs_packet      (rob_rs_packet),   // going to RS
+        .rob_mt_packet      (rob_mt_packet),   // going to maptable
 
         .Branch_PC          (Branch_PC),
         .Branch_Target      (Branch_Target),
@@ -399,9 +374,7 @@ module pipeline (
     assign pipeline_completed_insts = {3'b0, cp_rt_packet.rob_entry.cp_bit}; // commit one valid instruction
     assign pipeline_error_status = cp_rt_packet.rob_entry.illegal        ? ILLEGAL_INST :
                                    cp_rt_packet.rob_entry.halt           ? HALTED_ON_WFI :
-                                //    (mem2proc_response==4'h0) ? LOAD_ACCESS_FAULT : NO_ERROR;
                                     (mem2proc_response==4'h0) ? NO_ERROR : NO_ERROR;
-    // assign pipeline_error_status = NO_ERROR;
 
     assign pipeline_commit_wr_en   = cp_rt_packet.rob_entry.cp_bit && (cp_rt_packet.rob_entry.reg_idx != 5'h0);
     assign pipeline_commit_wr_idx  = cp_rt_packet.rob_entry.reg_idx;

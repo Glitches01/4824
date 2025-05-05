@@ -1,4 +1,3 @@
-
 // The decoder, copied from p3/stage_id.sv without changes
 
 `include "verilog/sys_defs.svh"
@@ -8,13 +7,9 @@
 module Dispatch (
     input clock,
     input reset,
+    input enable,
 
-    input enable,//todo for update maptable
-
-    //From rob Units
-    //input  ROB_REGFILE_PACKET rob_regfile_packet,
-
-    //From Inst Buffer
+    // From Inst Buffer
     input  IB_ID_PACKET ib_id_packet,
 
     input ROB_MT_PACKET rob_mt_packet,
@@ -22,19 +17,9 @@ module Dispatch (
     input logic take_branch,
     //output ID_IB_PACKET id_ib_packet,
 
-    input CP_RT_PACKET    cp_rt_packet,   //todo
+    input CP_RT_PACKET    cp_rt_packet,   
     
-    ///////////////////////////////////////////////////////////////////////////////////////
-    //      From LSA, RS, RoB to determine the dp_packets that could be sent in this cycle
-    //      Send to Instruciton Buffer
-    //
-    // input LSQ, RS, RoB,
-	// output logic [1:0] dp_packet_count_out,
-    ///////////////////////////////////////////////////////////////////////////////////////
-
-    //From RS
-    //input  RS_DP_PACKET rs_dp_packet,
-    //To RS
+    // To RS
     output DP_RS_PACKET  dp_rs_packet,
     output DP_LSQ_PACKET dp_lsq_packet,
 
@@ -78,20 +63,6 @@ module Dispatch (
         .read_out_1     (dp_rs_packet.rs1_value),
         .read_out_2     (dp_rs_packet.rs2_value)
     );
-
-    // regfile u_regfile(
-    //     .wr_clk         (clock),
-    //     .reset          (reset),
-
-    //     .rda_idx        ({ib_id_packet[1].inst.r.rs1, ib_id_packet[0].inst.r.rs1}),
-    //     .rdb_idx        ({ib_id_packet[1].inst.r.rs2, ib_id_packet[0].inst.r.rs2}),
-    //     .rda_out        ({dp_rs_packet[1].rs1_value,  dp_rs_packet[0].rs1_value}),
-    //     .rdb_out        ({dp_rs_packet[1].rs2_value,  dp_rs_packet[0].rs2_value}),
-
-    //     .wr_en          (2'b0),
-    //     .wr_idx         (8'b0),
-    //     .wr_data        (64'b0)
-    // );
 
     logic has_dest_reg;
     decoder u_decoder0 (
@@ -156,8 +127,7 @@ module Dispatch (
     assign mt_rob_packet.valid_vector[1] = rob_entry2.valid;
 
     logic [4:0] mt_read_idx_1, mt_read_idx_2;
-    // assign mt_read_idx_1 = (dp_rs_packet.opa_select == 2'h0)? ib_id_packet.inst.r.rs1:5'h0;//todo
-    // assign mt_read_idx_2 = (dp_rs_packet.opb_select == 4'h0)? ib_id_packet.inst.r.rs2:5'h0;
+
     assign mt_read_idx_1 = ib_id_packet.inst.r.rs1;
     assign mt_read_idx_2 = ib_id_packet.inst.r.rs2;
     MapTable u_MapTable(
@@ -191,7 +161,7 @@ module MapTable #(
     input clock,
     input reset,
 
-    input enable,//todo
+    input enable,
     input squash,
 
     input [4:0] read_idx_1,
@@ -206,7 +176,7 @@ module MapTable #(
 
     input  [$clog2(`ROB_SIZE)-1:0] rob_tail,
 
-    input CP_RT_PACKET    cp_rt_packet   //todo
+    input CP_RT_PACKET    cp_rt_packet  
 );
     MAPTABLE maptable[0:31];
     assign rob_entry1 = maptable[read_idx_1];
@@ -226,7 +196,6 @@ module MapTable #(
             if(has_dest_reg && enable) begin
                 maptable[dest_reg_idx].rob_entry <= rob_tail;
                 maptable[dest_reg_idx].valid <= 1;
-                //maptable[dest_reg_idx].PC   <= PC;
             end
 
             if (cp_rt_packet.rob_entry.cp_bit && (cp_rt_packet.Tag == maptable[cp_rt_packet.rob_entry.reg_idx].rob_entry)) begin
@@ -236,19 +205,10 @@ module MapTable #(
                 end else begin
                     maptable[cp_rt_packet.rob_entry.reg_idx].valid <= 1'b0;
                 end
-                //maptable[cp_rt_packet.rob_entry.reg_idx].valid <= 1'b0;
             end
         end
     end
-
-
-
-
-
 endmodule
-
-
-
 
 
 // Decode an instruction: generate useful datapath control signals by matching the RISC-V ISA
@@ -269,18 +229,15 @@ module decoder (
 
     // Note: I recommend using an IDE's code folding feature on this block
     always_comb begin
-        // Default control values (looks like a NOP)
-        // See sys_defs.svh for the constants used here
-
+    // Default control values (looks like a NOP)
+    // See sys_defs.svh for the constants used here
     /////////////////////////////////////////////////////////////////////////////////////
     // Notes:
     // 1. Ref has functor_out = FUNC_ALU; logic FUNC_UNIT functor_out;
     //          This is basically distinguish btw FUNCTIONS, Necessary???
     // 2. rs1_exist  = `TRUE; rs2_exist = `FALSE; Necessray???
-    //
-    //
-    //
     /////////////////////////////////////////////////////////////////////////////////////
+
         opa_select    = OPA_IS_RS1;
         opb_select    = OPB_IS_RS2;
         alu_func      = ALU_ADD;
@@ -436,7 +393,7 @@ module decoder (
                     csr_op = `TRUE;
                 end
                 `WFI: begin
-                    halt = `TRUE;//todo
+                    halt = `TRUE;
                 end
                 default: begin
                     illegal = `TRUE;
@@ -455,68 +412,6 @@ endmodule // decoder
 //                 WB Stages of the Pipeline.                          //
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
-
-
-
-
-// module regfile (
-//     // inputs
-//     input [1:0][4:0]        rda_idx, rdb_idx, wr_idx, // read/write index, n-way
-//     input [1:0][`XLEN-1:0]  wr_data, // write data
-//     input [1:0]             wr_en,
-//     input                   wr_clk,
-//     input                   reset,
-
-//     // outputs
-//     output logic [1:0][`XLEN-1:0] rda_out, rdb_out // read data
-// );
-//     logic [31:0] [`XLEN-1:0] registers; // 32, 32-bit Registers
-//     logic [4:0] true_wr_idx_0;
-//     assign true_wr_idx_0 = (wr_idx[0] == wr_idx[1]) ? `ZERO_REG : wr_idx[0];
-//     // first write might be overwritten by the second
-
-//     always_comb begin
-//         for (int i = 0; i < 2; i++) begin
-//             if (rda_idx[i] == `ZERO_REG) begin
-//                 rda_out[i] = 0;
-//             end else if (wr_en[1] && (rda_idx[i] == wr_idx[1])) begin
-//                 rda_out[i] = wr_data[1];
-//             end else if (wr_en[0] && (rda_idx[i] == wr_idx[0])) begin
-//                 rda_out[i] = wr_data[0];
-//             end else begin
-//                 rda_out[i] = registers[rda_idx[i]];
-//             end
-            
-//             if (rdb_idx[i] == `ZERO_REG) begin
-//                 rdb_out[i] = 0;
-//             end else if (wr_en[1] && (rdb_idx[i] == wr_idx[1])) begin
-//                 rdb_out[i] = wr_data[1];
-//             end else if (wr_en[0] && (rdb_idx[i] == wr_idx[0])) begin
-//                 rdb_out[i] = wr_data[0];
-//             end else begin
-//                 rdb_out[i] = registers[rdb_idx[i]];
-//             end
-//         end
-//     end
-
-
-//     //
-//     // Write ports
-//     //
-//     always_ff @(posedge wr_clk) begin
-//         if (reset) begin//todo
-//             for (integer i = 0; i < 32; i = i + 1) begin
-//                 registers[i] <= 32'h0;
-//             end
-//         end else if (wr_en[0]  && (true_wr_idx_0 != `ZERO_REG)) begin
-//             registers[true_wr_idx_0] <= `SD wr_data[0];
-//         end
-//         if (wr_en[1]  && (wr_idx != `ZERO_REG)) begin
-//             registers[wr_idx[1]] <= `SD wr_data[1];
-//         end
-//     end
-// endmodule // regfile
-
 
 module regfile (
     input             clock, // system clock

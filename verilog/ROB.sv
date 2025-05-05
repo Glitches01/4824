@@ -4,18 +4,18 @@
 module ROB (
     input                       clock,
     input                       reset,
-    input                       squash_signal,//todo
+    input                       squash_signal,
 
-    input       CDB_PACKET      CDB_packet_in,      //todo has to be one cycle???
-    input       DP_ROB_PACKET   dp_rob_packet,//todo
-    input                       enable,//enable for allocating the entry
+    input       CDB_PACKET      CDB_packet_in,      
+    input       DP_ROB_PACKET   dp_rob_packet,
+    input                       enable,         //enable for allocating the entry
     input       MT_ROB_PACKET   mt_rob_packet,   
 
     input       CDB_PACKET      lsq_input,
     input logic [$clog2(`LSQ_SIZE)-1:0]   lsq_idx,
 
-    output      logic           available,    //todo
-    output      CP_RT_PACKET    cp_rt_packet,   //todo
+    output      logic           available,    
+    output      CP_RT_PACKET    cp_rt_packet,   
     output      ROB_RS_PACKET   rob_rs_packet,  
     output      ROB_MT_PACKET   rob_mt_packet,
 
@@ -24,8 +24,8 @@ module ROB (
     output logic [`XLEN-1:0] Branch_Target,
     output logic take_branch,
     output logic IsBranch,
-    output logic Branch_Miss//todo
-);//todotodotodo every tag by default is 0, have to change
+    output logic Branch_Miss
+);
 
     ROB_ENTRY   ROB_content   [`ROB_SIZE-1:0];
     ROB_ENTRY   ROB_content_n [`ROB_SIZE-1:0];
@@ -47,7 +47,7 @@ module ROB (
         if (CDB_packet_in.valid && (ROB_content[CDB_packet_in.Tag].PC == CDB_packet_in.PC) && !Branch_Miss) begin
             ROB_content_n[CDB_packet_in.Tag].inst           = CDB_packet_in.inst;
             ROB_content_n[CDB_packet_in.Tag].value          = CDB_packet_in.Value;
-            ROB_content_n[CDB_packet_in.Tag].alu_result     = CDB_packet_in.alu_result;//todo
+            ROB_content_n[CDB_packet_in.Tag].alu_result     = CDB_packet_in.alu_result;
             ROB_content_n[CDB_packet_in.Tag].cp_bit         = 1'b1;
             ROB_content_n[CDB_packet_in.Tag].ep_bit         = CDB_packet_in.take_branch;
             ROB_content_n[CDB_packet_in.Tag].NPC            = CDB_packet_in.NPC;
@@ -60,7 +60,7 @@ module ROB (
         if (lsq_input.valid && (ROB_content[lsq_input.Tag].PC == lsq_input.PC) && !Branch_Miss) begin
             ROB_content_n[lsq_input.Tag].inst           = lsq_input.inst;
             ROB_content_n[lsq_input.Tag].value          = lsq_input.Value;
-            ROB_content_n[lsq_input.Tag].alu_result     = 0;//todo
+            ROB_content_n[lsq_input.Tag].alu_result     = 0;
             ROB_content_n[lsq_input.Tag].cp_bit         = 1'b1;
             ROB_content_n[lsq_input.Tag].ep_bit         = 0;
             ROB_content_n[lsq_input.Tag].NPC            = lsq_input.NPC;
@@ -73,14 +73,14 @@ module ROB (
 
 
 
-        //allocate entry
+        // allocate entry
         if (enable) begin
             rob_rs_packet.Tag = tail_idx;
             rob_mt_packet.Tag = tail_idx;
             tail_n = tail + 1;
         end else begin
-            rob_rs_packet.Tag = tail_idx;//todo
-            rob_mt_packet.Tag = tail_idx;//todo have changed
+            rob_rs_packet.Tag = tail_idx;
+            rob_mt_packet.Tag = tail_idx;
         end
 
         if (enable) begin
@@ -96,51 +96,25 @@ module ROB (
                         ROB_content_n[k].lsq_idx = lsq_idx;
                     end
                     ROB_content_n[k].wr_mem  = dp_rob_packet.wr_mem;
-                    //ROB_content_n[k].inst= dp_rob_packet.IsBranch;
-                    // ROB_content_n[k].CantComplete = 1'b0;
                 end
             end
         end 
         
-        if (ROB_content[head_idx].cp_bit) begin  //todo should i complete/cp parallel priority with enbale? or enable first
+        if (ROB_content[head_idx].cp_bit) begin  
             ROB_content_n[head_idx].cp_bit = 1'b0;
-            if (ROB_content[head_idx].IsBranch) begin//todo roll-back
+            if (ROB_content[head_idx].IsBranch) begin
                 ROB_content_n[head_idx].ep_bit = 1'b0;
                 if (Branch_Miss) begin
                     tail_n = head + 1;
-                    //ROB_content_n[head_idx] = ROB_content[head_idx];
                     for (integer i = 0; i < `ROB_SIZE; i++) begin
                         if (i != head_idx) begin
                             ROB_content_n[i] = 0;
                         end
                     end
-                    //ROB_content_n[head_idx] = ROB_content[head_idx];
                 end
             end
             head_n = head + 1;
         end
-
-        // if (enable) begin
-        //     for (integer unsigned k = 0; k < `ROB_SIZE; k = k + 1) begin
-        //         if (k == tail_idx) begin
-        //             ROB_content_n[k].reg_idx = dp_rob_packet.dest_reg_idx;//destination
-        //             ROB_content_n[k].PC      = dp_rob_packet.PC;
-        //             ROB_content_n[k].NPC      = dp_rob_packet.NPC;
-        //             ROB_content_n[k].valid   = 1'b0;
-        //         end else begin
-        //             ROB_content_n[k].reg_idx = ROB_content[k].reg_idx;
-        //             ROB_content_n[k].PC      = ROB_content[k].PC;
-        //             ROB_content_n[k].NPC      = ROB_content[k].NPC;
-        //             ROB_content_n[k].valid   = ROB_content_n[k].valid;
-        //         end
-        //     end
-        // end else begin
-        //     for (integer unsigned k = 0; k < `ROB_SIZE; k = k + 1) begin
-        //         ROB_content_n[k].reg_idx = ROB_content[k].reg_idx;
-        //         ROB_content_n[k].PC      = ROB_content[k].PC;
-        //         ROB_content_n[k].valid   = ROB_content_n[k].valid;
-        //     end
-        // end
     end
 
     //for RS
@@ -184,17 +158,6 @@ module ROB (
             rob_rs_packet.complete[1] = 1'b1;
         end   
     end
-
-
-    // assign rob_rs_packet.rs1_value = mt_rob_packet.valid_vector[0] ? ROB_content[mt_rob_packet.RegS1_Tag].value : 0;//source
-    // assign rob_rs_packet.rs2_value = mt_rob_packet.valid_vector[1] ? ROB_content[mt_rob_packet.RegS2_Tag].value : 0;
-    // assign rob_rs_packet.RegS1_Tag = mt_rob_packet.RegS1_Tag;
-    // assign rob_rs_packet.RegS2_Tag = mt_rob_packet.RegS2_Tag;
-    // assign rob_rs_packet.valid_vector = mt_rob_packet.valid_vector;
-    // assign rob_rs_packet.complete[0] = ROB_content[mt_rob_packet.RegS1_Tag].valid;
-    // assign rob_rs_packet.complete[1] = ROB_content[mt_rob_packet.RegS2_Tag].valid;
-
-
 
     //for retire
     assign cp_rt_packet.rob_entry = ROB_content[head_idx];

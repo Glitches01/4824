@@ -16,10 +16,7 @@ module ReservationStation (
     output [11:0]            busy
 );
 
-    ////////////////////////////////////////////////
-    //Get the Correct ready and rs_value from ROB MT DP
-    //
-    ///////////////////////////////////////////////
+    // Get the Correct ready and rs_value from ROB MT DP
     logic [`XLEN-1:0] rs1_value, rs2_value;
     logic [$clog2(`ROB_SIZE)-1:0]  Tag;
     logic [$clog2(`ROB_SIZE)-1:0]  RS1_Tag, RS2_Tag;
@@ -66,30 +63,12 @@ module ReservationStation (
     end
 
 
-    ///////////////////////////////////////////////////
+
     // Control for reading from Instruction Buffer
-    //
-    ///////////////////////////////////////////////////
     logic req_valid, req_valid_mem;
     assign read_enable = req_valid && req_valid_mem;
-    // logic prev_read_enable;
-    // wire rs_available = (req_valid || 0) && !prev_read_enable;//todo to fast maybe gg
-    // // 时序逻辑：生成 read_enable
-    // always @(posedge clock) begin
-    //     if (reset) begin
-    //         read_enable      <= 1'b0;
-    //         prev_read_enable <= 1'b0;
-    //     end else begin
-    //         // 生成单周期脉冲
-    //         read_enable <= rs_available;
-    //         // 记录上一周期的读操作状态
-    //         prev_read_enable <= read_enable;
-    //     end
-    // end
 
-    // ================================================================
     // gnt
-    // ================================================================
     logic [7:0] gnt_rs;
     wire  [7:0] req = {!RS_Alu[7].busy,!RS_Alu[6].busy,!RS_Alu[5].busy,!RS_Alu[4].busy,!RS_Alu[3].busy,!RS_Alu[2].busy,!RS_Alu[1].busy,!RS_Alu[0].busy};
     priority_encoder #(
@@ -101,21 +80,14 @@ module ReservationStation (
     );
 
 
-    ////////////////////////////////////////////////////////////////////
-    //  RS
-    //
-    ////////////////////////////////////////////////////////////////////
-    //assign busy[2] = RS_Mem.busy;todo
-
+    // RS
     RS RS_Alu[0:7];
     logic [7:0] enable_alu;
     logic [11:0] gnt;
     logic issue;
     logic [7:0] issue_alu;
-    // assign issue_mem  = RS_Mem.ready[0] && RS_Mem.ready[1];todo
-    // ================================================================
-    // 生成 8 个保留站实例
-    // ================================================================
+
+    // generate 8 reserved station instances
     genvar i;
     generate
       for (i = 0; i < 8; i = i + 1) begin : gen_reservation_stations
@@ -126,37 +98,34 @@ module ReservationStation (
             .clock       (clock),
             .reset       (reset),
 
-            // 冲刷信号（共享）
+            // flush signal (shared)
             .flush       (take_branch),
-            //.flush       (1'b0),
-            // 使能信号按索引分配（例如 enable_alu[0] ~ enable_alu[7]）
+            
+            // enable signals are assigned by index (enable_alu[0] ~ enable_alu[7]）
             .enable      (enable_alu[i]),
 
-            // 输入数据包（假设广播共享）
+            // input packets (assuming broadcast sharing)
             .dp_rs_packet(dp_rs_packet),
 
-            // Tag 信号按索引分配（假设 Tag 是向量）
+            // Tag signals are assigned by index (assuming tag is a vector)
             .RS1_Tag     (RS1_Tag),
             .RS2_Tag     (RS2_Tag),
             .Tag         (Tag),
             .needTag     (needTag),
 
-            // 操作数值（按索引分配）
+            // op values
             .rs1_value   (rs1_value),
             .rs2_value   (rs2_value),
 
-            // 就绪信号（按索引输出）
             .ready       (ready),
 
-            // CDB 广播（共享）
             .cdb_packet  (cdb_packet),
             .lsq_input   (lsq_input),
 
-            // 仲裁授权信号（按索引分配）
-            .issue       (gnt[i]),  // 例如 gnt_rs[0] ~ gnt_rs[7]
+            .issue       (gnt[i]),  // like gnt_rs[0] ~ gnt_rs[7]
 
-            // 输出到执行单元（按索引分配）
-            .rs          (RS_Alu[i])   // 例如 RS_Alu[0] ~ RS_Alu[7]
+            // output to execution units (assigned by index)
+            .rs          (RS_Alu[i])   // like RS_Alu[0] ~ RS_Alu[7]
         );
       end
     endgenerate
@@ -184,16 +153,12 @@ module ReservationStation (
             .clock       (clock),
             .reset       (reset),
 
-            // 冲刷信号（共享）
             .flush       (take_branch),
-            //.flush       (1'b0),
-            // 使能信号按索引分配（例如 enable_alu[0] ~ enable_alu[7]）
+
             .enable      (enable_mem[f]),
 
-            // 输入数据包（假设广播共享）
             .dp_rs_packet(dp_rs_packet),
 
-            // Tag 信号按索引分配（假设 Tag 是向量）
             .RS1_Tag     (RS1_Tag),
             .RS2_Tag     (RS2_Tag),
             .Tag         (Tag),
@@ -201,33 +166,23 @@ module ReservationStation (
 
             .lsq_idx     (lsq_idx),
 
-            // 操作数值（按索引分配）
             .rs1_value   (rs1_value),
             .rs2_value   (rs2_value),
 
-            // 就绪信号（按索引输出）
             .ready       (ready),
 
-            // CDB 广播（共享）
             .cdb_packet  (cdb_packet),
             .lsq_input   (lsq_input),
 
-            // 仲裁授权信号（按索引分配）
-            .issue       (gnt[8 + f]),  // 例如 gnt_rs[0] ~ gnt_rs[7]
+            .issue       (gnt[8 + f]),
 
-            // 输出到执行单元（按索引分配）
-            .rs          (RS_Mem[f])   // 例如 RS_Alu[0] ~ RS_Alu[7]
+            .rs          (RS_Mem[f]) 
         );
       end
     endgenerate
 
-    /////////////////////////////////////////////////////
     // Issue when RS get ready
-    //
-    /////////////////////////////////////////////////////
     RS RS_issue;
-    // assign issue = |{issue_alu1, issue_alu2, issue_mem};
-
     priority_encoder #(
         .WIDTH(12)
     )u_priority_encoder_rs(
@@ -248,36 +203,6 @@ module ReservationStation (
                 RS_issue = RS_Mem[k];
             end
         end
-        // case (gnt)
-        //     9'b100000000: begin
-        //         RS_issue = RS_Mem;
-        //     end
-        //     9'b010000000: begin
-        //         RS_issue = RS_Alu[7];
-        //     end
-        //     9'b001000000: begin
-        //         RS_issue = RS_Alu[6];
-        //     end
-        //     9'b000100000: begin
-        //         RS_issue = RS_Alu[5];
-        //     end
-        //     9'b000010000: begin
-        //         RS_issue = RS_Alu[4];
-        //     end
-        //     9'b000001000: begin
-        //         RS_issue = RS_Alu[3];
-        //     end
-        //     9'b000000100: begin
-        //         RS_issue = RS_Alu[2];
-        //     end
-        //     9'b000000010: begin
-        //         RS_issue = RS_Alu[1];
-        //     end
-        //     9'b000000001: begin
-        //         RS_issue = RS_Alu[0];
-        //     end
-        //     default: RS_issue = 0;
-        // endcase
     end
 
     always_ff @( posedge clock ) begin
@@ -432,7 +357,7 @@ module ResSta #(
             end
         end
         
-        if ((issue)) begin//todo
+        if ((issue)) begin
             rs.ready[0]         <= 1'b0;
             rs.ready[1]         <= 1'b0;
         end
@@ -537,10 +462,9 @@ module ResSta_MEM #(
             end
         end
         
-        if ((issue)) begin//todo
+        if ((issue)) begin
             rs.ready[0]         <= 1'b0;
             rs.ready[1]         <= 1'b0;
-            //rs.busy             <= rs.rd_mem;
         end
     end
 endmodule

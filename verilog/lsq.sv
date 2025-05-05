@@ -16,12 +16,12 @@ module lsq
     output [$clog2(DEPTH)-1:0]          lsq_idx,
     input                               Branch_Miss,
 
-//from RS/Dispatch
+    //from RS/Dispatch
     input  EX_LSQ_PACKET                ex_lsq_packet,
     
-//to CDB
+    //to CDB
     output CDB_PACKET                   lsq2cdb,
-//with dcache
+    //with dcache
     output DCACHE_IN_PACKET             lsq2dcache_packet,
     input  DCACHE_OUT_PACKET            dcache2lsq_packet
 );
@@ -120,52 +120,42 @@ module lsq
   assign lsq2dcache_packet.is_store          = lsq[lsq_head_idx].is_store && lsq[lsq_head_idx].h_valid;
   assign lsq2dcache_packet.lsq_is_requesting = lsq[lsq_head_idx].h_valid;//when 1, send load/store to dcache
 
-
-  // always_comb begin
-  //   lsq2cdb.valid        <= lsq[lsq_head_idx].valid;//TODO
-  //   lsq2cdb.PC           <= lsq[lsq_head_idx].PC;
-  //   lsq2cdb.NPC          <= lsq[lsq_head_idx].NPC;
-  //   lsq2cdb.Value        <= lsq[lsq_head_idx].value;
-  //   lsq2cdb.Tag          <= lsq[lsq_head_idx].Tag;
-  //   lsq2cdb.inst         <= lsq[lsq_head_idx].inst;
-  //   lsq2cdb.dest_reg_idx <= lsq[lsq_head_idx].dest_reg_idx;
-  // end
-    logic [`XLEN-1:0] read_data;
-    always_comb begin
-        read_data = dcache2lsq_packet.value;
-        if (lsq[lsq_head_idx].rd_unsigned) begin
-            // unsigned: zero-extend the data
-            if (lsq[lsq_head_idx].mem_size == BYTE) begin
-                read_data[`XLEN-1:8] = 0;
-            end else if (lsq[lsq_head_idx].mem_size == HALF) begin
-                read_data[`XLEN-1:16] = 0;
-            end
-        end else begin
-            // signed: sign-extend the data
-            if (lsq[lsq_head_idx].mem_size[1:0] == BYTE) begin
-                read_data[`XLEN-1:8] = {(`XLEN-8){ dcache2lsq_packet.value[7]}};
-            end else if (lsq[lsq_head_idx].mem_size == HALF) begin
-                read_data[`XLEN-1:16] = {(`XLEN-16){ dcache2lsq_packet.value[15]}};
-            end
-        end
-    end
+  logic [`XLEN-1:0] read_data;
+  always_comb begin
+      read_data = dcache2lsq_packet.value;
+      if (lsq[lsq_head_idx].rd_unsigned) begin
+          // unsigned: zero-extend the data
+          if (lsq[lsq_head_idx].mem_size == BYTE) begin
+              read_data[`XLEN-1:8] = 0;
+          end else if (lsq[lsq_head_idx].mem_size == HALF) begin
+              read_data[`XLEN-1:16] = 0;
+          end
+      end else begin
+          // signed: sign-extend the data
+          if (lsq[lsq_head_idx].mem_size[1:0] == BYTE) begin
+              read_data[`XLEN-1:8] = {(`XLEN-8){ dcache2lsq_packet.value[7]}};
+          end else if (lsq[lsq_head_idx].mem_size == HALF) begin
+              read_data[`XLEN-1:16] = {(`XLEN-16){ dcache2lsq_packet.value[15]}};
+          end
+      end
+  end
 
 always_ff @(posedge clock) begin
   if (reset) begin
     lsq2cdb <= '{valid: 0, Tag: 0, Value: 0, alu_result:0, inst: '0, PC:0, NPC:0, take_branch:0, dest_reg_idx:0, halt:0, illegal:0, done:0};
   end else begin
     //lsq2cdb <= '{valid: 0, Tag: 0, Value: 0, alu_result:0, inst: '0, PC:0, NPC:0, take_branch:0, dest_reg_idx:0, halt:0, illegal:0, done:0};
-    if (lsq[lsq_head_idx].h_valid && dcache2lsq_packet.completed) begin//todo
-      lsq2cdb.valid        <= 1'b1;//TODO
+    if (lsq[lsq_head_idx].h_valid && dcache2lsq_packet.completed) begin
+      lsq2cdb.valid        <= 1'b1;
       lsq2cdb.PC           <= lsq[lsq_head_idx].PC;
       lsq2cdb.NPC          <= lsq[lsq_head_idx].NPC;
 
-      lsq2cdb.Value        <= read_data;// lsq[lsq_head_idx].value;//
+      lsq2cdb.Value        <= read_data;// lsq[lsq_head_idx].value;
       lsq2cdb.Tag          <= lsq[lsq_head_idx].Tag;
       lsq2cdb.inst         <= lsq[lsq_head_idx].inst;
       lsq2cdb.dest_reg_idx <= lsq[lsq_head_idx].dest_reg_idx;
     end else begin
-      lsq2cdb.valid        <= 1'b0;//TODO
+      lsq2cdb.valid        <= 1'b0;
     end
   end
 end

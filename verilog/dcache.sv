@@ -6,13 +6,13 @@ module dcache(
     input DCACHE_IN_PACKET              dcache_in,                    // input from LSQ
     
     // inputs from mem
-    input [3:0]                         Dmem2proc_resp,                           // memory response status/ack                
-    input [63:0]                        Dmem2proc_data,                          // memory response data
-    input [3:0]                         Dmem2proc_tag,                            // response tag used for tracking requests
+    input [3:0]                         Dmem2proc_resp,               // memory response status/ack                
+    input [63:0]                        Dmem2proc_data,               // memory response data
+    input [3:0]                         Dmem2proc_tag,                // response tag used for tracking requests
 
-    output DCACHE_OUT_PACKET            dcache2lsq_packet,           // output to LSQ (and ROB)
+    output DCACHE_OUT_PACKET            dcache2lsq_packet,            // output to LSQ (and ROB)
     
-    output DCACHE_DATASET [15:0]        dcache,                      // dcache
+    output DCACHE_DATASET [15:0]        dcache,                       // dcache
     
     // outputs to mem
     output logic [`XLEN-1:0]            proc2Dmem_addr,               // address of memory request
@@ -25,11 +25,10 @@ module dcache(
     DCACHE_DATASET current_set;
    
     
-    ///////////////////////////////////////////////////////////////////
-    //  address_valid: the accessed address by lsq is valid
-    //  request_valid: valid request
-    //  waiting_mem_tag: the tag dcache should be expecting.
-    ///////////////////////////////////////////////////////////////////
+
+    // address_valid: the accessed address by lsq is valid
+    // request_valid: valid request
+    // waiting_mem_tag: the tag dcache should be expecting.
     logic address_valid;
     logic real_request; // 1 if dcache_in is really an effictive request (not)
     logic [3:0] waiting_mem_tag; // the tag dcache should be expecting.
@@ -38,11 +37,9 @@ module dcache(
     assign real_request  = (dcache_in.lsq_is_requesting) && address_valid;
 
     
-    ///////////////////////////////////////////////////////////////////
-    //  current_addr_tag: decoded tag sent by lsq
-    //  current_addr_index: decoded index sent by lsq
-    //  current_addr_offset: decoded offset sent by lsq
-    ///////////////////////////////////////////////////////////////////
+    // current_addr_tag: decoded tag sent by lsq
+    // current_addr_index: decoded index sent by lsq
+    // current_addr_offset: decoded offset sent by lsq
     logic [24:0] current_addr_tag;
     logic [3:0]  current_addr_index;
     logic [2:0]  current_addr_offset;
@@ -51,18 +48,14 @@ module dcache(
     assign current_addr_index  = dcache_in.address[6:3];
     assign current_addr_offset = dcache_in.address[2:0];
 
-    ///////////////////////////////////////////////////////////////////
-    //  
-    //  current_set: current cache set lsq is accessing
-    //  
-    ///////////////////////////////////////////////////////////////////
+
+    // current cache set lsq is accessing
     assign current_set = dcache[current_addr_index];
     
-    ///////////////////////////////////////////////////////////////////
-    //  line0_hit: hit line 0 by comparing tag
-    //  line1_hit: hit line 1
-    //  miss: miss at line0 & line 1
-    ///////////////////////////////////////////////////////////////////
+
+    // line0_hit: hit line 0 by comparing tag
+    // line1_hit: hit line 1
+    // miss: miss at line0 & line 1
     logic line_0_hit, line_1_hit;
     logic miss;
     assign line_0_hit = (current_set.line[0].tag == current_addr_tag) & current_set.line[0].valid;
@@ -95,9 +88,7 @@ module dcache(
         end
     end
 
-    ///////////////////////////////////////////////////////////////////
     //  send request to Data MEM
-    ///////////////////////////////////////////////////////////////////
     always_comb begin
         proc2Dmem_cmd = BUS_NONE;
         proc2Dmem_addr = 0;
@@ -114,9 +105,7 @@ module dcache(
         end
     end
 
-    ///////////////////////////////////////////////////////////////////
     //  Update the cache line during DCACHE_IDLE_HIT. DCACHE_LD_WAIT, DCACHE_ST_WAIT
-    ///////////////////////////////////////////////////////////////////
     always_comb begin
         n_cache_data = dcache;
         if (((state == DCACHE_LD_WAIT) || (state == DCACHE_ST_WAIT)) && real_request) begin
@@ -127,7 +116,7 @@ module dcache(
             end
         end
         if (((state == DCACHE_ST_WAIT) && ((waiting_mem_tag == Dmem2proc_tag) && (waiting_mem_tag != 3'b0)))
-        || ((state == DCACHE_IDLE_HIT) && ~miss && dcache_in.is_store)) begin//todo
+        || ((state == DCACHE_IDLE_HIT) && ~miss && dcache_in.is_store)) begin
             if (dcache_in.mem_size[1:0] == 2'b10) begin 
                 case (current_addr_offset[2])
                     1'b1: n_cache_data[current_addr_index].line[current_line_idx].data[63:32] = dcache_in.value;
@@ -158,10 +147,8 @@ module dcache(
         end
     end
     
-    ////////////////////////////////////////////////////////////////////////
     //  send data to lsq
-    //  Controls the line and exact byte it is accessing based on lsq2dcache_packet.mem_size and current_addr_offset
-    ////////////////////////////////////////////////////////////////////////
+    //  controls the line and exact byte it is accessing based on lsq2dcache_packet.mem_size and current_addr_offset
     always_comb begin
         if (current_addr_offset[2] == 1'b1) begin
             dcache2lsq_packet.value = current_set.line[current_line_idx].data[63:32];
@@ -181,10 +168,8 @@ module dcache(
         endcase
     end
 
-    ////////////////////////////////////////////////////////////////////////
-    //  FSM:
-    //  DCACHE_IDLE_HIT if(miss) then-> DCACHE_ST_EVICT/DCACHE_LD_EVICT if(tag = tag) then -> DCACHE_ST_WAIT/DCACHE_LD_WAIT
-    ////////////////////////////////////////////////////////////////////////
+
+    //  FSM: DCACHE_IDLE_HIT if(miss) then-> DCACHE_ST_EVICT/DCACHE_LD_EVICT if(tag = tag) then -> DCACHE_ST_WAIT/DCACHE_LD_WAIT
     always_ff @(posedge clock) begin
         if (reset) begin
             for (int i = 0; i < 16; i++) begin

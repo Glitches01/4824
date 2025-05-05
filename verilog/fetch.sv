@@ -33,10 +33,7 @@ module stage_if (
 	output IF_IB_PACKET             if_ib_packet
 );
 
-
-    //////////////////////////////////////////////////////
 	//	Fetch Module
-	//////////////////////////////////////////////////////
     logic [`XLEN-1:0] PC_reg, NPC_reg; // PC we are currently fetching
     logic enable;
 
@@ -45,10 +42,10 @@ module stage_if (
         if_pc = PC_reg;
     end
 
-    always_comb begin//todo
+    always_comb begin
         NPC_reg = bp2if_pc;
     end
-    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid) && !IsFull;//todo could controls (Icache_IF_packet.Icache_data_out != 32'h0)) &&
+    assign enable = (Icache_IF_packet.Icache_valid_out && if_valid) && !IsFull; // could controls (Icache_IF_packet.Icache_data_out != 32'h0)) &&
 
     // synopsys sync_set_reset "reset"
     always_ff @(posedge clock) begin
@@ -66,8 +63,6 @@ module stage_if (
         .reset          (reset),
 
         .if_pc          (if_pc),
-        // .inst(),
-        // .valid          (valid),
 
         .IsBranch       (IsBranch),
         .take_branch    (take_branch),
@@ -75,22 +70,15 @@ module stage_if (
         .Branch_Target  (branch_target),
 
         .bp2if_pc       (bp2if_pc)
-        // .predict_taken  (predict_taken)
-        //.bp2if_npc      (),
-        //.bp_taken()
     );
 
-    //////////////////////////////////////////////////////
 	//	To ICache
-	//////////////////////////////////////////////////////
 	always_comb begin
 		IF_Icache_packet.Icache_addr_in = {PC_reg[`XLEN-1:2], 2'b0};
-		IF_Icache_packet.Icache_request = 1;//todo could be control
+		IF_Icache_packet.Icache_request = 1;
 	end
 
-    //////////////////////////////////////////////////////
 	//	To Inst Buffer
-	//////////////////////////////////////////////////////
     always_comb begin
         if_ib_packet.valid      = enable;
         if_ib_packet.inst       = Icache_IF_packet.Icache_data_out;
@@ -106,8 +94,6 @@ module Branch_Predictor(
 
     //From IF Stage
     input [`XLEN-1:0]          if_pc,
-    // input  INST [1:0]          inst,
-    // input                      valid,
 
     //From EX Stage
     input                      IsBranch,
@@ -117,8 +103,6 @@ module Branch_Predictor(
 
     //To IF Stage
     output logic  [`XLEN-1:0]  bp2if_pc
-    //output logic  [`XLEN-1:0]  bp2if_npc,
-    //output logic               bp_taken,
 );
 
     // pht output
@@ -201,9 +185,9 @@ module Branch_Predictor(
     .reset              (reset),
 
     //From Execute, record branch target history
-    .br_en              (IsBranch),    // 1 if insn is branch (con/uncon)
+    .br_en              (IsBranch),         // 1 if insn is branch (con/uncon)
     .take_branch        (take_branch),
-    .ex_pc              (Branch_PC),  // pc from ex stage 
+    .ex_pc              (Branch_PC),        // pc from ex stage 
     .ex_tg_pc           (Branch_Target),    // target pc from ex stage in 
 
     //From IF Stage
@@ -221,48 +205,6 @@ module Branch_Predictor(
         end
     end
 
-
-    // output to if, next pc multiplexer
-    // always_comb begin
-    //     if (link[0]) begin
-    //         bp2if_npc[0] = return_addr;
-    //         bp2if_npc[1] = return_addr + 4;
-    //         bp2if_pc[0] = return_addr;
-    //         bp2if_pc[1] = return_addr + 4;
-    //     end else if (jump[0] && hit[0]) begin
-    //         bp2if_npc[0] = predict_pc_out[0];
-    //         bp2if_npc[1] = predict_pc_out[0] + 4;
-    //         bp2if_pc[0] =  predict_pc_out[0];
-    //         bp2if_pc[1] =  predict_pc_out[0] + 4;
-    //     end else if (cond_branch[0] && predict_taken[0] && hit[0]) begin
-    //         bp2if_npc[0] = predict_pc_out[0];
-    //         bp2if_npc[1] = predict_pc_out[0] + 4;
-    //         bp2if_pc[0] =  predict_pc_out[0];
-    //         bp2if_pc[1] =  predict_pc_out[0] + 4;
-    //     end else if (link[1]) begin
-    //         bp2if_npc[0] = if_pc[0] + 4;
-    //         bp2if_npc[1] = return_addr;
-    //         bp2if_pc[0] =  return_addr;
-    //         bp2if_pc[1] =  return_addr+4;
-    //     end else if (jump[1] && hit[1]) begin
-    //         bp2if_npc[0] = if_pc[0] + 4;
-    //         bp2if_npc[1] = predict_pc_out[1];
-    //         bp2if_pc[0] =  predict_pc_out[1];
-    //         bp2if_pc[1] =  predict_pc_out[1]+4;
-    //     end else if (cond_branch[1] && predict_taken[1] && hit[1]) begin
-    //         bp2if_npc[0] = if_pc[0] + 4;
-    //         bp2if_npc[1] = predict_pc_out[1];
-    //         bp2if_pc[0] =  predict_pc_out[1];
-    //         bp2if_pc[1] =  predict_pc_out[1]+4;
-    //     end else begin
-    //         bp2if_npc[0] = if_pc[0] + 4;
-    //         bp2if_npc[1] = if_pc[1] + 4;
-    //         bp2if_pc[0] =  if_pc[0] + 8;
-    //         bp2if_pc[1] =  if_pc[1] + 8;
-    //     end
-    // end
-
-    
 endmodule
 
 
@@ -279,9 +221,6 @@ endmodule
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
 
-
-
-
 module Branch_History_Table#(
     parameter BHT_INDEX = $clog2(`BHT_SIZE)//5
 )(
@@ -289,50 +228,30 @@ module Branch_History_Table#(
     input  clock, reset,
 
     //From Excute
-    //////////////////////////////////////////////////////
-	//  From Excute
-	//	br_en: branch enable: the instruction is a branch from excute
-	//	ex_pc: Program Counter: bypassing program counter, it is the original one from dump file
-    //  take_branch: Whether or not take branch
-	//////////////////////////////////////////////////////
-    input               br_en,
-    input  [`XLEN-1:0]  ex_pc,
-    input               take_branch,
+    input               br_en,          // branch enable: the instruction is a branch from excute
+    input  [`XLEN-1:0]  ex_pc,          // Program Counter: bypassing program counter, it is the original one from dump file
+    input               take_branch,    // whether or not take branch
 
     //From IF
-    //////////////////////////////////////////////////////
-    //  From IF
-	//	if_pc: Program Counter from IF
-	//////////////////////////////////////////////////////
-    input  [`XLEN-1:0]  if_pc,  
+    input  [`XLEN-1:0]  if_pc,          // Program Counter from IF
 
     //To PHT
-    //////////////////////////////////////////////////////
-    //  To PHT
-	//	bht_if: reading: which PHT to goto
-	//	bht_ex: writing: which PHT to update
-	//////////////////////////////////////////////////////
-    output [`BHT_WIDTH-1:0] bht2pht_if,//3
-    output [`BHT_WIDTH-1:0] bht2pht_ex //3
+    output [`BHT_WIDTH-1:0] bht2pht_if, //3 bht_if: reading: which PHT to goto
+    output [`BHT_WIDTH-1:0] bht2pht_ex  //3 bht_if: reading: which PHT to goto
 );
 
     logic [`BHT_WIDTH-1:0] bht [`BHT_SIZE-1:0];//3 - 0:31
 
-    //////////////////////////////////////////////////////
-	//	rptr: reading: decoded from if_pc, which entry to read
-	//	wptr: writing: decoded from ex_pc, which entry to update
-	//////////////////////////////////////////////////////
-    logic [BHT_INDEX-1:0] rptr;
-    logic [BHT_INDEX-1:0] wptr;
+    logic [BHT_INDEX-1:0] rptr;     // reading: decoded from if_pc, which entry to read
+    logic [BHT_INDEX-1:0] wptr;     // writing: decoded from ex_pc, which entry to update
+    
     // calculate the address
     always_comb begin
         wptr = ex_pc[2 +: BHT_INDEX];//[6:2]
         rptr = if_pc[2 +: BHT_INDEX];
     end
 
-    //////////////////////////////////////////////////////
 	//	bht: writing: update the new entry with addr = wptr, value = {bht[1:0],take_branch}
-	//////////////////////////////////////////////////////
     always_ff @(posedge clock) begin
         if (reset) begin
             for (int i=0;i<`BHT_SIZE;i++) begin
@@ -346,10 +265,7 @@ module Branch_History_Table#(
         end
     end
 
-    //////////////////////////////////////////////////////
 	//	bht: reading: read the new entry with addr = rptr/wrtr
-	//////////////////////////////////////////////////////
-
     assign bht2pht_if = bht[rptr];
     assign bht2pht_ex = bht[wptr];
 
