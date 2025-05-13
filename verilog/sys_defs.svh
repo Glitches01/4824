@@ -22,7 +22,7 @@
 
 // superscalar width
 `define N 1
-
+`define MULT_STAGES 2
 // sizes
 `define ROB_SZ xx
 `define RS_SZ xx

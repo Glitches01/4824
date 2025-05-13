@@ -334,10 +334,9 @@ SOURCES = verilog/pipeline.sv \
 		  verilog/lsq.sv \
 		  verilog/dcache.sv \
 		  verilog/complete.sv \
-		  verilog/ROB.sv
-
-        #   verilog/mult.sv \
-        #   verilog/mult_stage.sv \
+	          verilog/ROB.sv \
+#		  verilog/mult.sv \
+#  		  verilog/mult_stage.sv 
 
 SYNTH_FILES = synth/pipeline.vg
 
@@ -559,9 +558,10 @@ novas.rc: initialnovas.rc
 # BUG = output/graph.wb
 # FILE   = $(filter-out $(BUG),$(wildcard output/*.wb))
 # compare_all: $(FILE:=.wb)
-
+mkdiff:
+	mkdir diff
 # 比较规则 - 注意下面命令前必须是 TAB 不是空格
-%.diff: output/%.wb ref_output/%.wb
+%.diff: output/%.wb ref_output/%.wb mkdiff
 	@echo "Comparing $*.wb..."
 	@if [ -f ./output/$*.wb ] && [ -f ./ref_output/$*.wb ]; then \
 		diff ./output/$*.wb ./ref_output/$*.wb > diff/$*.log || true; \
